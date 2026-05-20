@@ -148,8 +148,10 @@ export async function embedTexts(
 }
 
 async function embedWithOpenAI(texts: string[]): Promise<number[][]> {
-	const key = typeof localStorage !== 'undefined' ? localStorage.getItem('openai_key') : null;
-	if (!key) throw new Error('OpenAI API key not set. Save it via the key input in the HUD.');
+	const stored =
+		typeof localStorage !== 'undefined' ? localStorage.getItem('nexus-recall:api-keys') : null;
+	const key = stored ? (JSON.parse(stored) as { openaiKey?: string }).openaiKey?.trim() : null;
+	if (!key) throw new Error('OpenAI API key not set — add it in Settings (⚙).');
 
 	const res = await fetch('https://api.openai.com/v1/embeddings', {
 		method: 'POST',

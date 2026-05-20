@@ -50,12 +50,7 @@
 		content: '';
 		position: absolute;
 		inset: 0;
-		background: linear-gradient(
-			90deg,
-			transparent 0%,
-			var(--border-light) 50%,
-			transparent 100%
-		);
+		background: linear-gradient(90deg, transparent 0%, var(--border-light) 50%, transparent 100%);
 		animation: shimmer 1.6s ease-in-out infinite;
 	}
 

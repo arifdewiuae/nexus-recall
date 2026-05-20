@@ -83,16 +83,38 @@ export function _assembleContext(chunks: ChunkRecord[]): string {
 		.join('\n\n---\n\n');
 }
 
+// ── Key resolution ─────────────────────────────────────────────────────────────
+
+interface ResolvedKeys {
+	anthropicKey: string;
+	fireworksKey: string;
+}
+
+function resolveKeys(request: Request): ResolvedKeys | null {
+	const userAnthropic = request.headers.get('x-anthropic-key')?.trim() ?? '';
+	const userFireworks = request.headers.get('x-fireworks-key')?.trim() ?? '';
+
+	const hasUserKey = !!(userAnthropic || userFireworks);
+	const demoEnabled = env.DEMO_KEYS_ENABLED === 'true';
+
+	if (!hasUserKey && !demoEnabled) return null;
+
+	return {
+		anthropicKey: userAnthropic || (demoEnabled ? (env.ANTHROPIC_API_KEY ?? '') : ''),
+		fireworksKey: userFireworks || (demoEnabled ? (env.FIREWORKS_API_KEY ?? '') : '')
+	};
+}
+
 // ── Model factory ──────────────────────────────────────────────────────────────
 
-function getModel(provider: string = 'fireworks') {
+function getModel(provider: string = 'fireworks', keys: ResolvedKeys) {
 	if (provider === 'anthropic') {
-		const anthropic = createAnthropic({ apiKey: env.ANTHROPIC_API_KEY });
+		const anthropic = createAnthropic({ apiKey: keys.anthropicKey });
 		return anthropic('claude-sonnet-4-6');
 	}
 	const fireworks = createOpenAI({
 		baseURL: 'https://api.fireworks.ai/inference/v1',
-		apiKey: env.FIREWORKS_API_KEY ?? ''
+		apiKey: keys.fireworksKey
 	});
 	return fireworks('accounts/fireworks/models/llama-v3p1-8b-instruct');
 }
@@ -105,6 +127,11 @@ const SYSTEM_PROMPT =
 	"If the context doesn't contain the answer, say so clearly.";
 
 export const POST: RequestHandler = async ({ request }) => {
+	const resolved = resolveKeys(request);
+	if (!resolved) {
+		return json({ error: 'API keys required — configure them in Settings (⚙)' }, { status: 401 });
+	}
+
 	const body = (await request.json()) as ChatRequest;
 	const { question, chunks, provider } = body;
 
@@ -115,14 +142,14 @@ export const POST: RequestHandler = async ({ request }) => {
 		return json({ error: 'chunks array is required and must not be empty' }, { status: 400 });
 	}
 
-	if (provider === 'anthropic' && !env.ANTHROPIC_API_KEY) {
-		return json({ error: 'ANTHROPIC_API_KEY is not configured' }, { status: 503 });
+	if (provider === 'anthropic' && !resolved.anthropicKey) {
+		return json({ error: 'Anthropic key not set — add it in Settings (⚙)' }, { status: 503 });
 	}
-	if (provider !== 'anthropic' && !env.FIREWORKS_API_KEY) {
-		return json({ error: 'FIREWORKS_API_KEY is not configured' }, { status: 503 });
+	if (provider !== 'anthropic' && !resolved.fireworksKey) {
+		return json({ error: 'Fireworks key not set — add it in Settings (⚙)' }, { status: 503 });
 	}
 
-	const model = getModel(provider);
+	const model = getModel(provider, resolved);
 	const ranked = await _tryRerank(question, chunks);
 	const topChunks = ranked.slice(0, 5);
 	const context = _assembleContext(topChunks);

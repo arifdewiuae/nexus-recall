@@ -4,7 +4,10 @@
 	import { embedText, loadModel } from '$lib/rag/embeddings';
 	import { similaritySearch } from '$lib/rag/vector-store';
 	import { readyCount, hitChunks } from '$lib/stores/ingestion';
+	import { apiKeys } from '$lib/stores/apiKeys';
+	import { SvelteMap } from 'svelte/reactivity';
 	import Sprite from './Sprite.svelte';
+	import PixelIcon from './PixelIcon.svelte';
 
 	interface Citation {
 		source: string;
@@ -71,16 +74,21 @@
 		}
 
 		// Record which chunks matched (rank 0 = best) so the viewer can highlight them
-		const newHits = new Map<string, number>();
+		const newHits = new SvelteMap<string, number>();
 		(chunks as Array<{ id: string }>).slice(0, 5).forEach((c, i) => newHits.set(c.id, i));
 		hitChunks.set(newHits);
 
 		inputValue = '';
 		isSearching = false;
 
+		const keys = $apiKeys;
+		const headers: Record<string, string> = {};
+		if (keys.anthropicKey) headers['x-anthropic-key'] = keys.anthropicKey;
+		if (keys.fireworksKey) headers['x-fireworks-key'] = keys.fireworksKey;
+
 		await chat.sendMessage(
 			{ text: question },
-			{ body: { question, chunks, documentFilter: documentFilter ?? undefined, provider } }
+			{ headers, body: { question, chunks, documentFilter: documentFilter ?? undefined, provider } }
 		);
 	}
 
@@ -153,7 +161,7 @@
 				<Sprite name="wizard" scale={5} />
 			</div>
 			<div class="oe-title">THE ORACLE AWAITS</div>
-			<div class="oe-sub">▸ YOUR QUESTION</div>
+			<div class="oe-sub"><PixelIcon name="arrow" size={8} /> YOUR QUESTION</div>
 			<div class="oe-hint">
 				{$readyCount > 0 ? 'ASK THE ORACLE' : 'LOAD A SCROLL FIRST'}
 			</div>
@@ -185,14 +193,16 @@
 							<div class="citations">
 								{#each citations as cite, i (i)}
 									<button
-									class="cite"
-									class:tier-2={i >= 2}
-									title={cite.quote}
-									aria-label="Jump to citation: {cite.source}{cite.page > 0 ? `, page ${cite.page}` : ''}"
-									onclick={() => onCiteClick?.(cite)}
-								>
-									{cite.source}{cite.page > 0 ? ` · p.${cite.page}` : ''}
-								</button>
+										class="cite"
+										class:tier-2={i >= 2}
+										title={cite.quote}
+										aria-label="Jump to citation: {cite.source}{cite.page > 0
+											? `, page ${cite.page}`
+											: ''}"
+										onclick={() => onCiteClick?.(cite)}
+									>
+										{cite.source}{cite.page > 0 ? ` · p.${cite.page}` : ''}
+									</button>
 								{/each}
 							</div>
 						{/if}
@@ -236,7 +246,7 @@
 		</div>
 	{/if}
 	<div class="oracle-input">
-		<span class="prompt">►</span>
+		<span class="prompt"><PixelIcon name="arrow" size={8} /></span>
 		<input
 			bind:this={inputEl}
 			type="text"

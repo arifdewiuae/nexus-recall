@@ -9,8 +9,8 @@
 			<button
 				class="toast-close"
 				onclick={() => dismissToast(toast.id)}
-				aria-label="Dismiss notification"
-			>✕</button>
+				aria-label="Dismiss notification">✕</button
+			>
 		</div>
 	{/each}
 </div>

@@ -16,6 +16,8 @@
 	} from '$lib/stores/ingestion';
 	import { theme } from '$lib/stores/theme';
 	import SkeletonPane from '$lib/components/SkeletonPane.svelte';
+	import SettingsModal from '$lib/components/SettingsModal.svelte';
+	import PixelIcon from '$lib/components/PixelIcon.svelte';
 
 	onMount(() => {
 		rehydrateFromDB();
@@ -26,12 +28,9 @@
 	const MODEL_CYCLE: EmbeddingModel[] = ['minilm', 'mpnet', 'openai'];
 
 	let dropActive = $state(false);
+	let settingsOpen = $state(false);
 	let fileInputEl = $state<HTMLInputElement | null>(null);
 	let activeSource = $state<string | null>(null);
-	let openaiKey = $state(
-		typeof localStorage !== 'undefined' ? (localStorage.getItem('openai_key') ?? '') : ''
-	);
-
 	// Drag-to-resize
 	let tomeWidth = $state<number | null>(null);
 
@@ -42,7 +41,7 @@
 
 		const onMove = (ev: PointerEvent) => {
 			const delta = ev.clientX - startX;
-			tomeWidth = Math.max(180, Math.min(startWidth + delta, window.innerWidth - 480));
+			tomeWidth = Math.max(220, Math.min(startWidth + delta, window.innerWidth - 360));
 		};
 		const onUp = () => {
 			window.removeEventListener('pointermove', onMove);
@@ -94,12 +93,6 @@
 		embeddingModel.set(MODEL_CYCLE[(idx + 1) % MODEL_CYCLE.length]);
 	}
 
-	function saveOpenaiKey(e: Event) {
-		const val = (e.currentTarget as HTMLInputElement).value;
-		openaiKey = val;
-		if (typeof localStorage !== 'undefined') localStorage.setItem('openai_key', val);
-	}
-
 	function onDragOver(e: DragEvent) {
 		e.preventDefault();
 		dropActive = true;
@@ -131,6 +124,13 @@
 			const remaining = $documents.filter((d) => d.source !== source);
 			activeSource = remaining.find((d) => d.status === 'ready')?.source ?? null;
 		}
+	}
+
+	async function summonSample() {
+		const res = await fetch('/sample.md');
+		const text = await res.text();
+		const file = new File([text], 'dragon-codex.md', { type: 'text/markdown' });
+		ingestFiles([file]);
 	}
 </script>
 
@@ -167,9 +167,13 @@
 			{:else if $modelStatus === 'ready'}
 				<span style="color:var(--ok)">{MODEL_LABELS[$embeddingModel]}</span>
 			{:else if $modelStatus === 'error'}
-				<span style="color:var(--err)">ERROR ▶</span>
+				<span style="color:var(--err); display:inline-flex; align-items:center; gap:4px"
+					>ERROR <PixelIcon name="arrow" size={8} /></span
+				>
 			{:else}
-				<span class="chip-accent">{MODEL_LABELS[$embeddingModel]} ▶</span>
+				<span class="chip-accent" style="display:inline-flex; align-items:center; gap:4px"
+					>{MODEL_LABELS[$embeddingModel]} <PixelIcon name="arrow" size={8} /></span
+				>
 			{/if}
 		</button>
 		<div class="chip">
@@ -177,36 +181,23 @@
 			<span>{String($readyCount).padStart(2, '0')}</span>
 		</div>
 		<button
-			class="chip chip-btn"
+			class="chip chip-btn chip-icon"
 			onclick={() => theme.toggle()}
 			title="Toggle theme"
 			aria-label="Toggle theme"
+			><PixelIcon name={$theme === 'dark' ? 'sun' : 'moon'} size={16} /></button
 		>
-			{$theme === 'dark' ? '☀' : '☽'}
-		</button>
+		<button
+			class="chip chip-btn chip-icon"
+			onclick={() => (settingsOpen = true)}
+			title="API key settings"
+			aria-label="Open API key settings"><PixelIcon name="gear" size={16} /></button
+		>
 		<button class="btn btn-primary" onclick={openFilePicker} disabled={$isIngesting}>
-			⚔ LOAD SCROLL
+			<PixelIcon name="sword" size={14} />
+			LOAD SCROLL
 		</button>
 	</div>
-
-	<!-- OpenAI key bar (only when openai model selected) -->
-	{#if $embeddingModel === 'openai'}
-		<div class="api-key-bar">
-			<span class="key-label">OPENAI KEY</span>
-			<input
-				type="password"
-				class="key-input"
-				placeholder="sk-…"
-				value={openaiKey}
-				onchange={saveOpenaiKey}
-				autocomplete="off"
-				spellcheck="false"
-			/>
-			{#if openaiKey}
-				<span class="key-ok">✓ SAVED</span>
-			{/if}
-		</div>
-	{/if}
 
 	<!-- Main split pane -->
 	<div class="main">
@@ -222,10 +213,13 @@
 						<Sprite name="chest" scale={4} />
 					</div>
 					<div class="es-title">NO SCROLLS LOADED</div>
-					<div class="es-sub">▸ BEGIN YOUR QUEST</div>
+					<div class="es-sub"><PixelIcon name="arrow" size={8} /> BEGIN YOUR QUEST</div>
 					<div class="actions">
-						<button class="btn btn-primary" onclick={openFilePicker}>⚔ LOAD SCROLL</button>
-						<button class="btn">SUMMON SAMPLE</button>
+						<button class="btn btn-primary" onclick={openFilePicker}
+							><PixelIcon name="sword" size={14} /> LOAD SCROLL</button
+						>
+						<button class="btn" onclick={summonSample} disabled={$isIngesting}>SUMMON SAMPLE</button
+						>
 					</div>
 				</div>
 			{:else}
@@ -352,6 +346,8 @@
 		</div>
 	</div>
 </div>
+
+<SettingsModal bind:open={settingsOpen} />
 
 <!-- Drop overlay -->
 {#if dropActive}
