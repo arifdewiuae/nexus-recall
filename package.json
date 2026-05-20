@@ -44,6 +44,7 @@
 		"@ai-sdk/anthropic": "^3.0.78",
 		"@ai-sdk/openai": "^3.0.64",
 		"@ai-sdk/svelte": "^4.0.185",
+		"@langchain/textsplitters": "^1.0.1",
 		"@xenova/transformers": "^2.17.2",
 		"ai": "^6.0.185",
 		"flowbite": "^4.0.2",
