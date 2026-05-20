@@ -1,0 +1,1129 @@
+@import 'tailwindcss';
+@source "../node_modules/flowbite-svelte/dist";
+
+/* ============================================================
+   CURSED TOME — Nexus Recall design system
+   ============================================================ */
+
+:root {
+	--bg-deep: #14080c;
+	--bg-panel: #20101a;
+	--bg-elev: #2c1822;
+	--bg-elev-2: #3c2030;
+	--border-outer: #000000;
+	--border-light: #5e2438;
+	--border-dark: #080306;
+	--border-mid: #180a10;
+	--accent: #e0b040;
+	--accent-dim: #8e6020;
+	--crimson: #c84050;
+	--arcane: #9460e0;
+	--ok: #6fcf7f;
+	--err: #ff3d5a;
+	--err-dim: #3a0f1a;
+	--text: #f0d8b8;
+	--text-dim: #7a5a48;
+	--text-faint: #4a3a30;
+	--glow: rgba(224, 176, 64, 0.35);
+	--glow-strong: rgba(224, 176, 64, 0.55);
+
+	--parchment-bg: #322214;
+	--parchment-edge: #4e3520;
+	--parchment-fg: #f0d8b0;
+	--parchment-ink: #d8b888;
+	--parchment-ink-strong: #e0b040;
+	--parchment-ink-dim: #8c6a50;
+
+	/* sprite palette */
+	--sp-skin: #e8c098;
+	--sp-skin-dark: #604030;
+	--sp-hair: #3a1e10;
+	--sp-hat: #3d1a2a;
+	--sp-eye: #14080c;
+	--sp-robe: #5a1a2a;
+	--sp-armor: #6e3a28;
+	--sp-chest-dark: #4a2818;
+	--sp-chest-light: #8e5a30;
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+	height: 100%;
+	background: var(--bg-deep);
+	color: var(--text);
+	font-family: 'JetBrains Mono', ui-monospace, monospace;
+	font-size: 13px;
+	line-height: 1.6;
+	overflow: hidden;
+}
+
+body {
+	display: flex;
+	flex-direction: column;
+	position: relative;
+}
+
+/* Subtle CRT scanlines */
+body::after {
+	content: '';
+	position: fixed;
+	inset: 0;
+	background: repeating-linear-gradient(
+		to bottom,
+		transparent 0,
+		transparent 3px,
+		rgba(0, 0, 0, 0.1) 3px,
+		rgba(0, 0, 0, 0.1) 4px
+	);
+	pointer-events: none;
+	z-index: 9999;
+}
+
+img,
+.sprite {
+	image-rendering: pixelated;
+}
+.pixel {
+	font-family: 'Press Start 2P', monospace;
+	letter-spacing: 0.5px;
+}
+
+button {
+	font-family: inherit;
+	cursor: pointer;
+}
+input,
+textarea {
+	font-family: inherit;
+}
+
+::-webkit-scrollbar {
+	width: 10px;
+	height: 10px;
+}
+::-webkit-scrollbar-track {
+	background: var(--bg-deep);
+}
+::-webkit-scrollbar-thumb {
+	background: var(--border-light);
+	box-shadow: inset 0 0 0 2px var(--border-outer);
+}
+::-webkit-scrollbar-thumb:hover {
+	background: var(--accent-dim);
+}
+
+/* ============================================================
+   PANELS / CHROME
+   ============================================================ */
+.panel {
+	background: var(--bg-panel);
+	box-shadow: 0 0 0 2px var(--border-outer), inset 0 0 0 2px var(--border-light);
+	padding: 16px;
+}
+.panel-hero {
+	background: var(--bg-panel);
+	box-shadow:
+		0 0 0 2px var(--border-outer),
+		inset 2px 2px 0 0 var(--border-light),
+		inset -2px -2px 0 0 var(--border-dark);
+}
+.panel-inset {
+	background: var(--bg-deep);
+	box-shadow: inset 0 0 0 2px var(--border-outer);
+	padding: 12px;
+}
+
+/* ============================================================
+   BUTTONS / CHIPS / BADGES
+   ============================================================ */
+.btn {
+	font-family: 'Press Start 2P', monospace;
+	font-size: 9px;
+	background: var(--bg-elev);
+	color: var(--text);
+	padding: 9px 14px;
+	border: none;
+	cursor: pointer;
+	box-shadow:
+		0 0 0 2px var(--border-outer),
+		inset 1px 1px 0 0 var(--border-light),
+		inset -1px -1px 0 0 var(--border-dark);
+	letter-spacing: 0.5px;
+	white-space: nowrap;
+}
+.btn:hover {
+	background: var(--bg-elev-2);
+	color: var(--accent);
+}
+.btn:active,
+.btn.active {
+	background: var(--bg-deep);
+	box-shadow:
+		0 0 0 2px var(--border-outer),
+		inset 1px 1px 0 0 var(--border-dark),
+		inset -1px -1px 0 0 var(--border-light);
+	transform: translate(1px, 1px);
+}
+.btn:disabled {
+	color: var(--text-dim);
+	cursor: not-allowed;
+	opacity: 0.5;
+}
+.btn-primary {
+	background: var(--accent);
+	color: var(--bg-deep);
+}
+.btn-primary:hover {
+	background: var(--accent);
+	filter: brightness(1.15);
+	color: var(--bg-deep);
+}
+.btn-danger {
+	color: var(--crimson);
+}
+
+.chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	font-family: 'Press Start 2P', monospace;
+	font-size: 8px;
+	padding: 7px 10px;
+	background: var(--bg-elev);
+	color: var(--text);
+	box-shadow: 0 0 0 2px var(--border-outer);
+	letter-spacing: 0.5px;
+	white-space: nowrap;
+}
+.chip-dim {
+	color: var(--text-dim);
+}
+.chip-accent {
+	color: var(--accent);
+}
+
+.badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-family: 'Press Start 2P', monospace;
+	font-size: 7px;
+	padding: 5px 9px;
+	background: var(--bg-elev);
+	color: var(--text-dim);
+	box-shadow: 0 0 0 2px var(--border-outer);
+	letter-spacing: 0.5px;
+}
+.badge::before {
+	content: '';
+	width: 6px;
+	height: 6px;
+	background: currentColor;
+	display: inline-block;
+}
+.badge.pending {
+	color: var(--text-dim);
+}
+.badge.indexing {
+	color: var(--accent);
+}
+.badge.indexing::before {
+	animation: blink 1.2s steps(2) infinite;
+}
+.badge.ready {
+	color: var(--ok);
+}
+.badge.error {
+	color: var(--err);
+}
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+#app {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	position: relative;
+}
+
+.hud {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	padding: 12px 18px;
+	background: var(--bg-panel);
+	box-shadow: 0 0 0 2px var(--border-outer);
+	position: relative;
+	z-index: 5;
+	flex-shrink: 0;
+}
+.hud .logo {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-family: 'Press Start 2P', monospace;
+	font-size: 14px;
+	color: var(--text);
+	letter-spacing: 1px;
+}
+.hud .logo .dot {
+	width: 9px;
+	height: 9px;
+	background: var(--accent);
+	box-shadow:
+		0 0 0 2px var(--bg-deep),
+		0 0 10px var(--accent);
+}
+.hud .spacer {
+	flex: 1;
+}
+
+.main {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	background: var(--bg-deep);
+	padding: 12px;
+	gap: 0;
+}
+
+.divider {
+	width: 10px;
+	background: var(--bg-deep);
+	cursor: col-resize;
+	position: relative;
+	flex-shrink: 0;
+}
+.divider::before {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 4px;
+	height: 30px;
+	transform: translate(-50%, -50%);
+	background: repeating-linear-gradient(
+		to bottom,
+		var(--border-light) 0,
+		var(--border-light) 2px,
+		transparent 2px,
+		transparent 6px
+	);
+}
+
+/* ============================================================
+   TOME VIEWER (left pane)
+   ============================================================ */
+.tome {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	background: var(--bg-panel);
+	box-shadow:
+		0 0 0 2px var(--border-outer),
+		inset 2px 2px 0 0 var(--border-light),
+		inset -2px -2px 0 0 var(--border-dark);
+}
+.tabbar {
+	display: flex;
+	background: var(--bg-deep);
+	padding: 10px 12px 0 12px;
+	border-bottom: 2px solid var(--border-outer);
+	overflow: hidden;
+	gap: 0;
+	flex-shrink: 0;
+}
+.tab {
+	padding: 8px 14px 10px 14px;
+	font-family: 'Press Start 2P', monospace;
+	font-size: 8px;
+	letter-spacing: 0.5px;
+	color: var(--text-dim);
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	position: relative;
+	top: 2px;
+	max-width: 220px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-shrink: 0;
+}
+.tab.active {
+	background: var(--bg-panel);
+	color: var(--accent);
+	box-shadow: inset 0 2px 0 var(--accent);
+}
+.tab .close {
+	background: transparent;
+	border: none;
+	color: inherit;
+	font-family: inherit;
+	font-size: 10px;
+	padding: 0;
+	opacity: 0.4;
+	cursor: pointer;
+}
+.tab .close:hover {
+	opacity: 1;
+	color: var(--crimson);
+}
+
+.tome-body {
+	flex: 1;
+	min-height: 0;
+	padding: 16px;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+.tome-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding-bottom: 12px;
+}
+.tome-toolbar .filename {
+	font-family: 'Press Start 2P', monospace;
+	font-size: 9px;
+	color: var(--text);
+	letter-spacing: 0.5px;
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.parchment {
+	flex: 1;
+	background: var(--parchment-bg);
+	color: var(--parchment-fg);
+	padding: 28px 32px;
+	font-family: 'JetBrains Mono', monospace;
+	font-size: 13px;
+	line-height: 1.85;
+	overflow: auto;
+	box-shadow: inset 0 0 0 2px var(--border-outer);
+	position: relative;
+}
+.parchment .doc-title {
+	font-family: 'Press Start 2P', monospace;
+	font-size: 13px;
+	color: var(--parchment-ink-strong);
+	margin-bottom: 18px;
+	letter-spacing: 1px;
+}
+.parchment p {
+	margin: 0 0 16px 0;
+}
+
+.chunk {
+	transition: background 0.15s;
+	padding: 1px 0;
+	cursor: pointer;
+}
+.chunk.hl-1 {
+	background: var(--accent);
+	color: var(--bg-deep);
+	padding: 2px 4px;
+	font-weight: 600;
+	box-shadow: 0 0 0 1px var(--border-outer);
+}
+.chunk.hl-2 {
+	background: var(--accent);
+	color: var(--bg-deep);
+	padding: 1px 3px;
+	opacity: 0.75;
+}
+.chunk.hl-3 {
+	background: var(--accent);
+	color: var(--bg-deep);
+	padding: 1px 3px;
+	opacity: 0.45;
+}
+.chunk.hl-4 {
+	background: var(--crimson);
+	color: var(--text);
+	padding: 1px 3px;
+	opacity: 0.55;
+}
+.chunk.focused {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+	animation: chunk-pulse 0.8s ease-out;
+}
+@keyframes chunk-pulse {
+	0% {
+		box-shadow: 0 0 0 0 var(--glow-strong);
+	}
+	100% {
+		box-shadow: 0 0 0 24px transparent;
+	}
+}
+
+/* ============================================================
+   ORACLE TERMINAL (right pane)
+   ============================================================ */
+.oracle {
+	width: 440px;
+	flex-shrink: 0;
+	display: flex;
+	flex-direction: column;
+	background: var(--bg-panel);
+	box-shadow:
+		0 0 0 2px var(--border-outer),
+		inset 2px 2px 0 0 var(--border-light),
+		inset -2px -2px 0 0 var(--border-dark);
+}
+.oracle-header {
+	padding: 12px 16px;
+	border-bottom: 2px solid var(--border-outer);
+	background: var(--bg-deep);
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-shrink: 0;
+}
+.oracle-header .glow-dot {
+	width: 8px;
+	height: 8px;
+	background: var(--accent);
+	box-shadow: 0 0 8px var(--accent);
+}
+.oracle-header .oracle-title {
+	font-family: 'Press Start 2P', monospace;
+	font-size: 10px;
+	color: var(--accent);
+	letter-spacing: 1px;
+}
+.oracle-header .oracle-meta {
+	margin-left: auto;
+	font-family: 'Press Start 2P', monospace;
+	font-size: 7px;
+	color: var(--text-dim);
+	letter-spacing: 0.5px;
+}
+.oracle-body {
+	flex: 1;
+	min-height: 0;
+	padding: 16px;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+.oracle-input-wrap {
+	padding: 12px;
+	background: var(--bg-deep);
+	border-top: 2px solid var(--border-outer);
+	flex-shrink: 0;
+}
+.oracle-input {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px;
+	background: var(--bg-deep);
+	box-shadow: inset 0 0 0 2px var(--border-outer);
+}
+.oracle-input .prompt {
+	font-family: 'Press Start 2P', monospace;
+	font-size: 10px;
+	color: var(--accent);
+}
+.oracle-input input {
+	flex: 1;
+	background: transparent;
+	border: none;
+	outline: none;
+	color: var(--text);
+	font-family: 'JetBrains Mono', monospace;
+	font-size: 13px;
+	padding: 6px 0;
+}
+.oracle-input input::placeholder {
+	color: var(--text-dim);
+}
+.oracle-input input:disabled {
+	opacity: 0.5;
+}
+
+.message {
+	display: flex;
+	gap: 10px;
+	align-items: flex-start;
+}
+.portrait {
+	width: 44px;
+	height: 44px;
+	background: var(--bg-deep);
+	box-shadow: 0 0 0 2px var(--border-outer);
+	display: grid;
+	place-items: center;
+	flex-shrink: 0;
+}
+.bubble {
+	flex: 1;
+	min-width: 0;
+	padding: 12px 14px;
+	background: var(--bg-panel);
+	box-shadow: 0 0 0 2px var(--border-outer);
+	font-size: 13px;
+	line-height: 1.65;
+}
+.bubble.hero {
+	background: var(--bg-elev);
+}
+.bubble .bubble-name {
+	font-family: 'Press Start 2P', monospace;
+	font-size: 9px;
+	color: var(--accent);
+	margin-bottom: 8px;
+	letter-spacing: 0.5px;
+}
+.bubble.hero .bubble-name {
+	color: var(--text-dim);
+}
+.citations {
+	margin-top: 12px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+.cite {
+	font-family: 'Press Start 2P', monospace;
+	font-size: 7px;
+	padding: 5px 8px;
+	background: var(--bg-deep);
+	color: var(--accent);
+	box-shadow: 0 0 0 2px var(--accent);
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	letter-spacing: 0.5px;
+	cursor: pointer;
+	border: none;
+}
+.cite.tier-2 {
+	color: var(--crimson);
+	box-shadow: 0 0 0 2px var(--crimson);
+}
+.cite:hover {
+	background: var(--bg-elev);
+}
+
+.typewriter::after {
+	content: '';
+	display: inline-block;
+	width: 0.55em;
+	height: 1em;
+	background: currentColor;
+	vertical-align: text-bottom;
+	margin-left: 2px;
+	animation: blink 0.8s steps(2) infinite;
+}
+
+/* ============================================================
+   SIDEBAR / LIBRARY OVERLAY
+   ============================================================ */
+.library-toggle {
+	background: var(--bg-elev);
+	border: none;
+	color: var(--text);
+	font-family: 'Press Start 2P', monospace;
+	font-size: 8px;
+	padding: 7px 10px;
+	box-shadow: 0 0 0 2px var(--border-outer);
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	letter-spacing: 0.5px;
+}
+.library-toggle:hover {
+	color: var(--accent);
+}
+
+.library-pane {
+	position: absolute;
+	top: 64px;
+	right: 12px;
+	width: 360px;
+	background: var(--bg-panel);
+	box-shadow:
+		0 0 0 2px var(--border-outer),
+		inset 2px 2px 0 0 var(--border-light),
+		inset -2px -2px 0 0 var(--border-dark);
+	z-index: 50;
+	max-height: calc(100% - 80px);
+	display: flex;
+	flex-direction: column;
+}
+.library-pane .lib-head {
+	padding: 12px 14px;
+	border-bottom: 2px solid var(--border-outer);
+	background: var(--bg-deep);
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+.library-pane .lib-head .lib-title {
+	font-family: 'Press Start 2P', monospace;
+	font-size: 10px;
+	color: var(--accent);
+	letter-spacing: 1px;
+	flex: 1;
+}
+.library-pane .lib-head .lib-close {
+	background: transparent;
+	border: none;
+	color: var(--text-dim);
+	font-family: 'Press Start 2P', monospace;
+	font-size: 12px;
+	cursor: pointer;
+}
+.library-pane .lib-head .lib-close:hover {
+	color: var(--crimson);
+}
+.library-pane .lib-list {
+	padding: 12px;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.file-row {
+	padding: 10px 12px;
+	background: var(--bg-deep);
+	box-shadow: inset 0 0 0 2px var(--border-outer);
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	cursor: pointer;
+}
+.file-row:hover {
+	background: var(--bg-elev);
+}
+.file-row.active {
+	box-shadow: inset 0 0 0 2px var(--accent);
+}
+.file-row .scroll-icon {
+	width: 24px;
+	height: 20px;
+	flex-shrink: 0;
+}
+.file-row .file-info {
+	flex: 1;
+	min-width: 0;
+}
+.file-row .file-name {
+	font-size: 12px;
+	color: var(--text);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.file-row .file-meta {
+	font-size: 10px;
+	color: var(--text-dim);
+}
+.file-row .file-del {
+	background: transparent;
+	border: none;
+	color: var(--text-dim);
+	font-family: 'Press Start 2P', monospace;
+	font-size: 10px;
+	padding: 4px;
+	cursor: pointer;
+	opacity: 0;
+	transition: opacity 0.15s;
+}
+.file-row:hover .file-del {
+	opacity: 1;
+}
+.file-row .file-del:hover {
+	color: var(--crimson);
+}
+
+/* ============================================================
+   DROP OVERLAY
+   ============================================================ */
+.drop-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 8000;
+	background: rgba(20, 8, 12, 0.92);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	pointer-events: auto;
+}
+.drop-overlay .portal {
+	width: 480px;
+	padding: 60px 40px;
+	text-align: center;
+	background: var(--bg-deep);
+	box-shadow:
+		0 0 0 2px var(--border-outer),
+		inset 0 0 0 2px var(--accent),
+		0 0 60px var(--glow-strong);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 20px;
+	animation: drop-pulse 1.4s ease-in-out infinite;
+}
+@keyframes drop-pulse {
+	0%,
+	100% {
+		box-shadow:
+			0 0 0 2px var(--border-outer),
+			inset 0 0 0 2px var(--accent),
+			0 0 60px var(--glow-strong);
+	}
+	50% {
+		box-shadow:
+			0 0 0 2px var(--border-outer),
+			inset 0 0 0 2px var(--accent),
+			0 0 100px var(--glow-strong);
+	}
+}
+.drop-overlay .drop-title {
+	font-family: 'Press Start 2P', monospace;
+	font-size: 18px;
+	color: var(--accent);
+	letter-spacing: 2px;
+}
+.drop-overlay .drop-sub {
+	font-family: 'Press Start 2P', monospace;
+	font-size: 9px;
+	color: var(--text-dim);
+	letter-spacing: 1px;
+}
+
+/* ============================================================
+   EMPTY STATE
+   ============================================================ */
+.empty-state {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 24px;
+	position: relative;
+	overflow: hidden;
+	padding: 40px;
+}
+.empty-state::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: radial-gradient(ellipse at 50% 70%, var(--glow) 0%, transparent 50%);
+	opacity: 0.5;
+}
+.empty-state::after {
+	content: '';
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	height: 80px;
+	background: var(--bg-panel);
+	background-image: repeating-linear-gradient(
+		45deg,
+		var(--border-dark) 0,
+		var(--border-dark) 8px,
+		var(--bg-panel) 8px,
+		var(--bg-panel) 16px
+	);
+	opacity: 0.3;
+}
+.empty-state > * {
+	position: relative;
+	z-index: 1;
+}
+.empty-state .hero-row {
+	display: flex;
+	align-items: flex-end;
+	gap: 40px;
+}
+.empty-state .es-title {
+	font-family: 'Press Start 2P', monospace;
+	font-size: 18px;
+	color: var(--text);
+	letter-spacing: 2px;
+	text-align: center;
+}
+.empty-state .es-sub {
+	font-family: 'Press Start 2P', monospace;
+	font-size: 10px;
+	color: var(--accent);
+	letter-spacing: 1px;
+	text-align: center;
+}
+.empty-state .actions {
+	display: flex;
+	gap: 10px;
+	margin-top: 8px;
+}
+.bob {
+	animation: bob 1.8s ease-in-out infinite;
+}
+@keyframes bob {
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(-3px);
+	}
+}
+
+/* ============================================================
+   ORACLE EMPTY STATE
+   ============================================================ */
+.oracle-empty {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 20px;
+	padding: 30px;
+	position: relative;
+}
+.oracle-empty .wiz-bob {
+	animation: idle-blink 3.5s steps(2) infinite;
+}
+@keyframes idle-blink {
+	0%,
+	96%,
+	100% {
+		transform: scaleY(1);
+	}
+	98% {
+		transform: scaleY(0.1);
+	}
+}
+.oracle-empty .oe-title {
+	font-family: 'Press Start 2P', monospace;
+	font-size: 11px;
+	color: var(--text);
+	letter-spacing: 1px;
+	text-align: center;
+}
+.oracle-empty .oe-sub {
+	font-family: 'Press Start 2P', monospace;
+	font-size: 8px;
+	color: var(--accent);
+	letter-spacing: 1px;
+	text-align: center;
+}
+.oracle-empty .oe-hint {
+	font-family: 'Press Start 2P', monospace;
+	font-size: 8px;
+	color: var(--text-dim);
+	letter-spacing: 1px;
+	text-align: center;
+}
+.oracle-empty .examples {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin-top: 8px;
+	width: 100%;
+}
+.example-btn {
+	background: var(--bg-elev);
+	border: none;
+	color: var(--text);
+	font-family: 'JetBrains Mono', monospace;
+	font-size: 11px;
+	padding: 8px 10px;
+	cursor: pointer;
+	text-align: left;
+	box-shadow: 0 0 0 2px var(--border-outer);
+}
+.example-btn:hover {
+	background: var(--bg-elev-2);
+	color: var(--accent);
+}
+
+/* ============================================================
+   INGESTION PROGRESS
+   ============================================================ */
+.ingest-card {
+	margin: 12px;
+	padding: 16px 18px;
+	background: var(--bg-panel);
+	box-shadow:
+		0 0 0 2px var(--border-outer),
+		inset 2px 2px 0 0 var(--border-light),
+		inset -2px -2px 0 0 var(--border-dark);
+}
+.ingest-card .ingest-label {
+	display: flex;
+	justify-content: space-between;
+	font-family: 'Press Start 2P', monospace;
+	font-size: 9px;
+	color: var(--text);
+	letter-spacing: 1px;
+	margin-bottom: 8px;
+}
+.stat-bar {
+	position: relative;
+	height: 14px;
+	background: var(--bg-deep);
+	box-shadow: 0 0 0 2px var(--border-outer);
+	overflow: hidden;
+	margin-bottom: 12px;
+	display: flex;
+}
+.stat-bar .seg {
+	flex: 1;
+	border-right: 1px solid var(--border-outer);
+}
+.stat-bar .seg:last-child {
+	border-right: none;
+}
+.stat-bar .seg.filled {
+	background: var(--accent);
+}
+.stat-bar.amber .seg.filled {
+	background: var(--crimson);
+}
+.stat-bar.ok .seg.filled {
+	background: var(--ok);
+}
+.ingest-card .ingest-sub {
+	font-size: 11px;
+	color: var(--text-dim);
+}
+
+/* ============================================================
+   OFFLINE BANNER
+   ============================================================ */
+.offline-banner {
+	background: var(--err-dim);
+	color: #ffe0e0;
+	padding: 9px 16px;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	box-shadow: inset 0 0 0 2px var(--err);
+	font-family: 'Press Start 2P', monospace;
+	font-size: 9px;
+	letter-spacing: 0.5px;
+	flex-shrink: 0;
+}
+.offline-banner .offline-warn {
+	animation: blink 1.6s ease-in-out infinite;
+}
+.offline-banner .offline-right {
+	margin-left: auto;
+	font-family: 'JetBrains Mono', monospace;
+	font-size: 11px;
+	color: #ffa0a0;
+}
+
+/* ============================================================
+   INSTALL TOAST
+   ============================================================ */
+.install-toast {
+	position: fixed;
+	bottom: 24px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 60;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 14px;
+	background: var(--bg-panel);
+	box-shadow:
+		0 0 0 2px var(--border-outer),
+		inset 2px 2px 0 0 var(--border-light),
+		inset -2px -2px 0 0 var(--border-dark),
+		0 8px 32px rgba(0, 0, 0, 0.6);
+}
+.install-toast .toast-info {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 0 6px;
+}
+.install-toast .toast-title {
+	font-family: 'Press Start 2P', monospace;
+	font-size: 10px;
+	color: var(--accent);
+	letter-spacing: 1px;
+}
+.install-toast .toast-sub {
+	font-size: 11px;
+	color: var(--text-dim);
+}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+@keyframes blink {
+	0%,
+	49% {
+		opacity: 1;
+	}
+	50%,
+	100% {
+		opacity: 0.25;
+	}
+}
+
+.glow-on-mount {
+	animation: glow-in 0.8s ease-out;
+}
+@keyframes glow-in {
+	0% {
+		box-shadow: 0 0 0 2px var(--accent), 0 0 30px var(--glow-strong);
+	}
+	100% {
+		box-shadow: 0 0 0 2px var(--border-outer);
+	}
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 980px) {
+	.oracle {
+		width: 380px;
+	}
+}
+@media (max-width: 820px) {
+	.main {
+		flex-direction: column;
+	}
+	.oracle {
+		width: 100%;
+		min-height: 320px;
+	}
+	.divider {
+		display: none;
+	}
+	.tome {
+		min-height: 320px;
+	}
+}
