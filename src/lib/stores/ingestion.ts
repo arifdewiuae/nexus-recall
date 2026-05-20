@@ -3,6 +3,8 @@ import type { DocumentEntry, Chunk } from '$lib/types';
 import { parseFile } from '$lib/rag/parser';
 import { chunkDocument } from '$lib/rag/chunker';
 import { loadModel, embedTexts } from '$lib/rag/embeddings';
+import { upsertChunks, deleteDocument as deleteFromStore } from '$lib/rag/vector-store';
+import type { EmbeddedChunk } from '$lib/rag/vector-store';
 
 export const documents = writable<DocumentEntry[]>([]);
 export const chunkMap = writable<Map<string, Chunk[]>>(new Map());
@@ -64,11 +66,12 @@ export async function ingestFiles(files: File[]): Promise<void> {
 				(done, total) => embeddingProgress.set({ done, total })
 			);
 
-			const embeddedChunks: Chunk[] = chunks.map((c, idx) => ({
+			const embeddedChunks: EmbeddedChunk[] = chunks.map((c, idx) => ({
 				...c,
 				vector: vectors[idx]
 			}));
 
+			await upsertChunks(embeddedChunks, file.name);
 			chunkMap.update((m) => new Map(m).set(file.name, embeddedChunks));
 			documents.update((docs) =>
 				docs.map((d) =>
@@ -93,4 +96,5 @@ export function removeDocument(source: string): void {
 		next.delete(source);
 		return next;
 	});
+	deleteFromStore(source).catch(() => {});
 }
