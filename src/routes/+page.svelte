@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Sprite from '$lib/components/Sprite.svelte';
 	import ChunkVisualizer from '$lib/components/ChunkVisualizer.svelte';
+	import ChatPanel from '$lib/components/ChatPanel.svelte';
 	import {
 		documents,
 		chunkMap,
@@ -293,38 +294,7 @@
 
 		<!-- Oracle terminal (right pane) -->
 		<div class="oracle">
-			<div class="oracle-header">
-				<div class="glow-dot"></div>
-				<div class="oracle-title">ORACLE</div>
-				<div class="oracle-meta">IDLE</div>
-			</div>
-
-			<div class="oracle-body">
-				<div class="oracle-empty">
-					<div class="wiz-bob">
-						<Sprite name="wizard" scale={5} />
-					</div>
-					<div class="oe-title">THE ORACLE AWAITS</div>
-					<div class="oe-sub">▸ YOUR QUESTION</div>
-					<div class="oe-hint">
-						{$readyCount > 0 ? 'ASK THE ORACLE' : 'LOAD A SCROLL FIRST'}
-					</div>
-				</div>
-			</div>
-
-			<div class="oracle-input-wrap">
-				<div class="oracle-input">
-					<span class="prompt">►</span>
-					<input
-						type="text"
-						placeholder={$readyCount > 0 ? 'Ask anything…' : 'Load a scroll first…'}
-						disabled={$readyCount === 0}
-						autocomplete="off"
-						spellcheck="false"
-					/>
-					<button class="btn btn-primary" disabled={$readyCount === 0}>CAST</button>
-				</div>
-			</div>
+			<ChatPanel documentFilter={activeSource} />
 		</div>
 	</div>
 </div>
