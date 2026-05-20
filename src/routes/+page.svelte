@@ -59,7 +59,12 @@
 		</div>
 
 		<!-- Drag divider -->
-		<div class="divider" role="separator" aria-orientation="vertical" aria-label="Resize panes"></div>
+		<div
+			class="divider"
+			role="separator"
+			aria-orientation="vertical"
+			aria-label="Resize panes"
+		></div>
 
 		<!-- Oracle terminal (right pane) -->
 		<div class="oracle">

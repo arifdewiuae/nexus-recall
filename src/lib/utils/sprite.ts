@@ -76,16 +76,7 @@ const SPRITES: Record<SpriteName, string[]> = {
 		'BPPPPPPPPPPB',
 		'.BBBBBBBBBB.'
 	],
-	sword: [
-		'.....BB',
-		'....BSB',
-		'...BSSB',
-		'..BSSB.',
-		'.BSSB..',
-		'BHBB...',
-		'BHB....',
-		'.B.....'
-	]
+	sword: ['.....BB', '....BSB', '...BSSB', '..BSSB.', '.BSSB..', 'BHBB...', 'BHB....', '.B.....']
 };
 
 const PALETTES: Record<SpriteName, Record<string, string>> = {

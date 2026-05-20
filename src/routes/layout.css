@@ -1,5 +1,5 @@
 @import 'tailwindcss';
-@source "../node_modules/flowbite-svelte/dist";
+@source '../node_modules/flowbite-svelte/dist';
 
 /* ============================================================
    CURSED TOME — Nexus Recall design system
@@ -125,7 +125,9 @@ textarea {
    ============================================================ */
 .panel {
 	background: var(--bg-panel);
-	box-shadow: 0 0 0 2px var(--border-outer), inset 0 0 0 2px var(--border-light);
+	box-shadow:
+		0 0 0 2px var(--border-outer),
+		inset 0 0 0 2px var(--border-light);
 	padding: 16px;
 }
 .panel-hero {
@@ -1097,7 +1099,9 @@ textarea {
 }
 @keyframes glow-in {
 	0% {
-		box-shadow: 0 0 0 2px var(--accent), 0 0 30px var(--glow-strong);
+		box-shadow:
+			0 0 0 2px var(--accent),
+			0 0 30px var(--glow-strong);
 	}
 	100% {
 		box-shadow: 0 0 0 2px var(--border-outer);
