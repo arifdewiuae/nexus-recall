@@ -1,6 +1,7 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import Sprite from '$lib/components/Sprite.svelte';
-	import ChunkVisualizer from '$lib/components/ChunkVisualizer.svelte';
+	import DocumentViewer from '$lib/components/DocumentViewer.svelte';
 	import ChatPanel from '$lib/components/ChatPanel.svelte';
 	import {
 		documents,
@@ -10,8 +11,15 @@
 		isIngesting,
 		readyCount,
 		ingestFiles,
-		removeDocument
+		removeDocument,
+		rehydrateFromDB
 	} from '$lib/stores/ingestion';
+	import { theme } from '$lib/stores/theme';
+	import SkeletonPane from '$lib/components/SkeletonPane.svelte';
+
+	onMount(() => {
+		rehydrateFromDB();
+	});
 	import { embeddingModel, modelStatus, downloadProgress, MODEL_LABELS } from '$lib/rag/embeddings';
 	import type { EmbeddingModel } from '$lib/types';
 
@@ -23,6 +31,42 @@
 	let openaiKey = $state(
 		typeof localStorage !== 'undefined' ? (localStorage.getItem('openai_key') ?? '') : ''
 	);
+
+	// Drag-to-resize
+	let tomeWidth = $state<number | null>(null);
+
+	function onDividerPointerDown(e: PointerEvent) {
+		const startX = e.clientX;
+		const tomeEl = (e.currentTarget as HTMLElement).previousElementSibling as HTMLElement | null;
+		const startWidth = tomeWidth ?? tomeEl?.offsetWidth ?? 600;
+
+		const onMove = (ev: PointerEvent) => {
+			const delta = ev.clientX - startX;
+			tomeWidth = Math.max(180, Math.min(startWidth + delta, window.innerWidth - 480));
+		};
+		const onUp = () => {
+			window.removeEventListener('pointermove', onMove);
+			window.removeEventListener('pointerup', onUp);
+		};
+		window.addEventListener('pointermove', onMove);
+		window.addEventListener('pointerup', onUp);
+		e.preventDefault();
+	}
+
+	// Citation focus
+	let focusedPage = $state<number | null>(null);
+	let focusNonce = $state(0);
+
+	interface Citation {
+		source: string;
+		page: number;
+		quote: string;
+	}
+
+	function handleCiteClick(cite: Citation) {
+		focusedPage = cite.page;
+		focusNonce += 1;
+	}
 
 	$effect(() => {
 		if (!activeSource && $documents.length > 0) {
@@ -132,6 +176,14 @@
 			<span class="chip-dim">SCROLLS</span>
 			<span>{String($readyCount).padStart(2, '0')}</span>
 		</div>
+		<button
+			class="chip chip-btn"
+			onclick={() => theme.toggle()}
+			title="Toggle theme"
+			aria-label="Toggle theme"
+		>
+			{$theme === 'dark' ? '☀' : '☽'}
+		</button>
 		<button class="btn btn-primary" onclick={openFilePicker} disabled={$isIngesting}>
 			⚔ LOAD SCROLL
 		</button>
@@ -159,7 +211,7 @@
 	<!-- Main split pane -->
 	<div class="main">
 		<!-- Tome (left pane) -->
-		<div class="tome">
+		<div class="tome" style={tomeWidth ? `flex:none;width:${tomeWidth}px` : ''}>
 			{#if $documents.length === 0}
 				<!-- Empty state -->
 				<div class="empty-state">
@@ -269,15 +321,16 @@
 								ERROR: {doc.error}
 							</div>
 						{:else if doc?.status === 'ready' && activeChunks.length > 0}
-							<div style="flex:1;overflow-y:auto;">
-								<ChunkVisualizer chunks={activeChunks} />
+							<div style="flex:1;overflow-y:auto;min-height:0">
+								<DocumentViewer
+									source={activeSource}
+									chunks={activeChunks}
+									{focusedPage}
+									{focusNonce}
+								/>
 							</div>
 						{:else if doc?.status === 'indexing' || doc?.status === 'embedding' || doc?.status === 'pending'}
-							<div
-								style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-family:'Press Start 2P',monospace;font-size:9px;letter-spacing:1px"
-							>
-								{doc.status === 'embedding' ? 'EMBEDDING…' : 'INDEXING…'}
-							</div>
+							<SkeletonPane label={doc.status === 'embedding' ? 'EMBEDDING…' : 'INDEXING…'} />
 						{/if}
 					{/if}
 				</div>
@@ -290,11 +343,12 @@
 			role="separator"
 			aria-orientation="vertical"
 			aria-label="Resize panes"
+			onpointerdown={onDividerPointerDown}
 		></div>
 
 		<!-- Oracle terminal (right pane) -->
 		<div class="oracle">
-			<ChatPanel documentFilter={activeSource} />
+			<ChatPanel documentFilter={activeSource} onCiteClick={handleCiteClick} />
 		</div>
 	</div>
 </div>

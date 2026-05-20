@@ -3,13 +3,21 @@ import type { DocumentEntry, Chunk } from '$lib/types';
 import { parseFile } from '$lib/rag/parser';
 import { chunkDocument } from '$lib/rag/chunker';
 import { loadModel, embedTexts } from '$lib/rag/embeddings';
-import { upsertChunks, deleteDocument as deleteFromStore } from '$lib/rag/vector-store';
+import {
+	upsertChunks,
+	deleteDocument as deleteFromStore,
+	listDocuments,
+	getChunksBySource
+} from '$lib/rag/vector-store';
 import type { EmbeddedChunk } from '$lib/rag/vector-store';
+import { addToast } from '$lib/stores/toast';
 
 export const documents = writable<DocumentEntry[]>([]);
 export const chunkMap = writable<Map<string, Chunk[]>>(new Map());
 export const chunkingProgress = writable<{ done: number; total: number } | null>(null);
 export const embeddingProgress = writable<{ done: number; total: number } | null>(null);
+// chunk id → rank (0 = best match) for the last similarity search
+export const hitChunks = writable<Map<string, number>>(new Map());
 
 export const isIngesting = derived(documents, ($docs) =>
 	$docs.some((d) => d.status === 'indexing' || d.status === 'embedding')
@@ -79,14 +87,41 @@ export async function ingestFiles(files: File[]): Promise<void> {
 				)
 			);
 		} catch (err) {
+			const msg = String(err);
 			documents.update((docs) =>
-				docs.map((d) => (d.id === entryId ? { ...d, status: 'error', error: String(err) } : d))
+				docs.map((d) => (d.id === entryId ? { ...d, status: 'error', error: msg } : d))
 			);
+			addToast(`Failed to ingest "${file.name}": ${msg}`, 'error');
 		} finally {
 			chunkingProgress.set(null);
 			embeddingProgress.set(null);
 		}
 	}
+}
+
+export async function rehydrateFromDB(): Promise<void> {
+	const metas = await listDocuments();
+	if (metas.length === 0) return;
+
+	const pairs = await Promise.all(
+		metas.map(async (m) => ({ source: m.source, chunks: await getChunksBySource(m.source) }))
+	);
+
+	const entries: DocumentEntry[] = metas.map((m) => ({
+		id: crypto.randomUUID(),
+		name: m.name,
+		source: m.source,
+		status: 'ready',
+		chunkCount: m.chunkCount
+	}));
+
+	const newChunkMap = new Map<string, Chunk[]>();
+	for (const { source, chunks } of pairs) {
+		newChunkMap.set(source, chunks);
+	}
+
+	documents.set(entries);
+	chunkMap.set(newChunkMap);
 }
 
 export function removeDocument(source: string): void {

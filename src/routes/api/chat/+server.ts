@@ -13,7 +13,7 @@ import { env } from '$env/dynamic/private';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-export interface ChunkRecord {
+export interface _ChunkRecord {
 	id: string;
 	source: string;
 	pageNumber?: number;
@@ -21,6 +21,8 @@ export interface ChunkRecord {
 	text: string;
 	vector: number[];
 }
+
+type ChunkRecord = _ChunkRecord;
 
 interface ChatRequest {
 	question: string;
@@ -31,7 +33,7 @@ interface ChatRequest {
 
 // ── Citation schema ────────────────────────────────────────────────────────────
 
-export const CitationSchema = z.object({
+export const _CitationSchema = z.object({
 	citations: z.array(
 		z.object({
 			source: z.string(),
@@ -41,14 +43,14 @@ export const CitationSchema = z.object({
 	)
 });
 
-export type CitationResult = z.infer<typeof CitationSchema>;
+export type _CitationResult = z.infer<typeof _CitationSchema>;
 
 // ── Cross-encoder reranker ─────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _rerankerPipeline: any = null;
 
-export async function tryRerank(question: string, chunks: ChunkRecord[]): Promise<ChunkRecord[]> {
+export async function _tryRerank(question: string, chunks: ChunkRecord[]): Promise<ChunkRecord[]> {
 	if (chunks.length <= 1) return chunks;
 	try {
 		if (!_rerankerPipeline) {
@@ -72,7 +74,7 @@ export async function tryRerank(question: string, chunks: ChunkRecord[]): Promis
 
 // ── Context assembly ───────────────────────────────────────────────────────────
 
-export function assembleContext(chunks: ChunkRecord[]): string {
+export function _assembleContext(chunks: ChunkRecord[]): string {
 	return chunks
 		.map(
 			(c, i) =>
@@ -121,16 +123,16 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 
 	const model = getModel(provider);
-	const ranked = await tryRerank(question, chunks);
+	const ranked = await _tryRerank(question, chunks);
 	const topChunks = ranked.slice(0, 5);
-	const context = assembleContext(topChunks);
+	const context = _assembleContext(topChunks);
 
 	// Extract structured citations before streaming the answer
-	let citations: CitationResult['citations'] = [];
+	let citations: _CitationResult['citations'] = [];
 	try {
 		const { object } = await generateObject({
 			model,
-			schema: CitationSchema,
+			schema: _CitationSchema,
 			prompt:
 				`Given this context:\n\n${context}\n\n` +
 				`Question: "${question}"\n\n` +

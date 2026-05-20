@@ -3,7 +3,7 @@
 	import { DefaultChatTransport } from 'ai';
 	import { embedText, loadModel } from '$lib/rag/embeddings';
 	import { similaritySearch } from '$lib/rag/vector-store';
-	import { readyCount } from '$lib/stores/ingestion';
+	import { readyCount, hitChunks } from '$lib/stores/ingestion';
 	import Sprite from './Sprite.svelte';
 
 	interface Citation {
@@ -14,9 +14,10 @@
 
 	interface Props {
 		documentFilter?: string | null;
+		onCiteClick?: (cite: Citation) => void;
 	}
 
-	let { documentFilter = null }: Props = $props();
+	let { documentFilter = null, onCiteClick }: Props = $props();
 
 	type Provider = 'fireworks' | 'anthropic';
 	let provider = $state<Provider>('fireworks');
@@ -68,6 +69,11 @@
 			searchError = String(err);
 			return;
 		}
+
+		// Record which chunks matched (rank 0 = best) so the viewer can highlight them
+		const newHits = new Map<string, number>();
+		(chunks as Array<{ id: string }>).slice(0, 5).forEach((c, i) => newHits.set(c.id, i));
+		hitChunks.set(newHits);
 
 		inputValue = '';
 		isSearching = false;
@@ -178,9 +184,14 @@
 						{#if citations.length > 0}
 							<div class="citations">
 								{#each citations as cite, i (i)}
-									<button class="cite" class:tier-2={i >= 2} title={cite.quote}>
-										{cite.source}{cite.page > 0 ? ` · p.${cite.page}` : ''}
-									</button>
+									<button
+									class="cite"
+									class:tier-2={i >= 2}
+									title={cite.quote}
+									onclick={() => onCiteClick?.(cite)}
+								>
+									{cite.source}{cite.page > 0 ? ` · p.${cite.page}` : ''}
+								</button>
 								{/each}
 							</div>
 						{/if}

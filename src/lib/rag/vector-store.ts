@@ -107,6 +107,19 @@ export async function listDocuments(): Promise<DocumentMeta[]> {
 	return db.getAll('documents');
 }
 
+export async function getChunksBySource(source: string): Promise<EmbeddedChunk[]> {
+	const db = await getDB();
+	const raw = await db.getAllFromIndex('chunks', 'by_source', IDBKeyRange.only(source));
+	return raw.map((c) => ({
+		id: c.id,
+		source: c.source,
+		pageNumber: c.pageNumber,
+		chunkIndex: c.chunkIndex,
+		text: c.text,
+		vector: c.vector
+	}));
+}
+
 export async function similaritySearch(
 	queryVec: number[],
 	topK: number,
