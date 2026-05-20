@@ -1,11 +1,14 @@
 import { defineConfig } from '@playwright/test';
 
+const CI = !!process.env.CI;
+
 export default defineConfig({
-	webServer: {
-		command: process.env.CI ? 'npm run preview' : 'npm run build && npm run preview',
-		port: 4173,
-		reuseExistingServer: !process.env.CI
+	webServer: CI
+		? { command: 'npm run preview', port: 4173, reuseExistingServer: false }
+		: { command: 'npm run dev', url: 'http://localhost:5173', reuseExistingServer: true },
+	use: {
+		baseURL: CI ? 'http://localhost:4173' : 'http://localhost:5173'
 	},
-	reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'html',
+	reporter: CI ? [['github'], ['html', { open: 'never' }]] : 'html',
 	testMatch: '**/*.e2e.{ts,js}'
 });
