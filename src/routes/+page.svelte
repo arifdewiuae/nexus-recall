@@ -5,15 +5,23 @@
 		documents,
 		chunkMap,
 		chunkingProgress,
+		embeddingProgress,
 		isIngesting,
 		readyCount,
 		ingestFiles,
 		removeDocument
 	} from '$lib/stores/ingestion';
+	import { embeddingModel, modelStatus, downloadProgress, MODEL_LABELS } from '$lib/rag/embeddings';
+	import type { EmbeddingModel } from '$lib/types';
+
+	const MODEL_CYCLE: EmbeddingModel[] = ['minilm', 'mpnet', 'openai'];
 
 	let dropActive = $state(false);
 	let fileInputEl = $state<HTMLInputElement | null>(null);
 	let activeSource = $state<string | null>(null);
+	let openaiKey = $state(
+		typeof localStorage !== 'undefined' ? (localStorage.getItem('openai_key') ?? '') : ''
+	);
 
 	$effect(() => {
 		if (!activeSource && $documents.length > 0) {
@@ -27,9 +35,25 @@
 	const progressPct = $derived(
 		$chunkingProgress ? Math.round(($chunkingProgress.done / $chunkingProgress.total) * 100) : 0
 	);
+	const embedPct = $derived(
+		$embeddingProgress ? Math.round(($embeddingProgress.done / $embeddingProgress.total) * 100) : 0
+	);
 
 	const segCount = 20;
 	const filledSegs = $derived(Math.round((progressPct / 100) * segCount));
+	const filledEmbedSegs = $derived(Math.round((embedPct / 100) * segCount));
+
+	function cycleModel() {
+		const current = $embeddingModel;
+		const idx = MODEL_CYCLE.indexOf(current);
+		embeddingModel.set(MODEL_CYCLE[(idx + 1) % MODEL_CYCLE.length]);
+	}
+
+	function saveOpenaiKey(e: Event) {
+		const val = (e.currentTarget as HTMLInputElement).value;
+		openaiKey = val;
+		if (typeof localStorage !== 'undefined') localStorage.setItem('openai_key', val);
+	}
 
 	function onDragOver(e: DragEvent) {
 		e.preventDefault();
@@ -84,10 +108,25 @@
 			<span>NEXUS<span style="color:var(--text-dim)">·</span>RECALL</span>
 		</div>
 		<div class="spacer"></div>
-		<div class="chip">
-			<span class="chip-dim">MODEL</span>
-			<span class="chip-accent">FIREWORKS · CLOUD</span>
-		</div>
+		<button
+			class="chip chip-btn"
+			onclick={cycleModel}
+			title="Click to cycle embedding model"
+			aria-label="Cycle embedding model"
+		>
+			<span class="chip-dim">EMBED</span>
+			{#if $modelStatus === 'downloading'}
+				<span class="chip-accent" style="animation: blink 1.2s steps(2) infinite">
+					{$downloadProgress ? `${Math.round($downloadProgress.progress)}%` : 'LOADING…'}
+				</span>
+			{:else if $modelStatus === 'ready'}
+				<span style="color:var(--ok)">{MODEL_LABELS[$embeddingModel]}</span>
+			{:else if $modelStatus === 'error'}
+				<span style="color:var(--err)">ERROR ▶</span>
+			{:else}
+				<span class="chip-accent">{MODEL_LABELS[$embeddingModel]} ▶</span>
+			{/if}
+		</button>
 		<div class="chip">
 			<span class="chip-dim">SCROLLS</span>
 			<span>{String($readyCount).padStart(2, '0')}</span>
@@ -96,6 +135,25 @@
 			⚔ LOAD SCROLL
 		</button>
 	</div>
+
+	<!-- OpenAI key bar (only when openai model selected) -->
+	{#if $embeddingModel === 'openai'}
+		<div class="api-key-bar">
+			<span class="key-label">OPENAI KEY</span>
+			<input
+				type="password"
+				class="key-input"
+				placeholder="sk-…"
+				value={openaiKey}
+				onchange={saveOpenaiKey}
+				autocomplete="off"
+				spellcheck="false"
+			/>
+			{#if openaiKey}
+				<span class="key-ok">✓ SAVED</span>
+			{/if}
+		</div>
+	{/if}
 
 	<!-- Main split pane -->
 	<div class="main">
@@ -131,7 +189,7 @@
 							onkeydown={(e) => e.key === 'Enter' && (activeSource = doc.source)}
 						>
 							<span class="badge {doc.status}" style="font-size:6px;padding:3px 6px;">
-								{doc.status === 'indexing'
+								{doc.status === 'indexing' || doc.status === 'embedding'
 									? '…'
 									: doc.status === 'ready'
 										? '✓'
@@ -156,7 +214,6 @@
 				<!-- Tome body -->
 				<div class="tome-body">
 					{#if $chunkingProgress !== null}
-						<!-- Ingestion progress -->
 						<div class="ingest-card">
 							<div class="ingest-label">
 								<span>INDEXING…</span>
@@ -169,6 +226,25 @@
 							</div>
 							<div class="ingest-sub">
 								Processing page {$chunkingProgress.done} of {$chunkingProgress.total}…
+							</div>
+						</div>
+					{/if}
+
+					{#if $embeddingProgress !== null}
+						<div class="ingest-card">
+							<div class="ingest-label">
+								<span>EMBEDDING…</span>
+								<span>{embedPct}%</span>
+							</div>
+							<div class="stat-bar amber">
+								{#each Array.from({ length: segCount }, (_, i) => i) as i (i)}
+									<div class="seg" class:filled={i < filledEmbedSegs}></div>
+								{/each}
+							</div>
+							<div class="ingest-sub">
+								Chunk {$embeddingProgress.done} of {$embeddingProgress.total} · {MODEL_LABELS[
+									$embeddingModel
+								]}
 							</div>
 						</div>
 					{/if}
@@ -195,11 +271,11 @@
 							<div style="flex:1;overflow-y:auto;">
 								<ChunkVisualizer chunks={activeChunks} />
 							</div>
-						{:else if doc?.status === 'indexing' || doc?.status === 'pending'}
+						{:else if doc?.status === 'indexing' || doc?.status === 'embedding' || doc?.status === 'pending'}
 							<div
 								style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-family:'Press Start 2P',monospace;font-size:9px;letter-spacing:1px"
 							>
-								INDEXING…
+								{doc.status === 'embedding' ? 'EMBEDDING…' : 'INDEXING…'}
 							</div>
 						{/if}
 					{/if}

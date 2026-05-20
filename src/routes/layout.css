@@ -211,6 +211,13 @@ textarea {
 .chip-accent {
 	color: var(--accent);
 }
+.chip-btn {
+	cursor: pointer;
+	transition: box-shadow 0.12s;
+}
+.chip-btn:hover {
+	box-shadow: 0 0 0 2px var(--accent);
+}
 
 .badge {
 	display: inline-flex;
@@ -245,6 +252,12 @@ textarea {
 }
 .badge.error {
 	color: var(--err);
+}
+.badge.embedding {
+	color: var(--crimson);
+}
+.badge.embedding::before {
+	animation: blink 1.2s steps(2) infinite;
 }
 
 /* ============================================================
@@ -288,6 +301,42 @@ textarea {
 }
 .hud .spacer {
 	flex: 1;
+}
+
+.api-key-bar {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 6px 16px;
+	background: var(--bg-panel);
+	border-bottom: 2px solid var(--border-outer);
+	font-family: 'Press Start 2P', monospace;
+}
+.key-label {
+	font-size: 7px;
+	color: var(--text-dim);
+	letter-spacing: 0.5px;
+	white-space: nowrap;
+}
+.key-input {
+	flex: 1;
+	max-width: 360px;
+	background: var(--bg-deep);
+	border: none;
+	box-shadow: 0 0 0 2px var(--border-outer);
+	color: var(--text);
+	font-family: monospace;
+	font-size: 11px;
+	padding: 5px 8px;
+	outline: none;
+}
+.key-input:focus {
+	box-shadow: 0 0 0 2px var(--accent);
+}
+.key-ok {
+	font-size: 7px;
+	color: var(--ok);
+	letter-spacing: 0.5px;
 }
 
 .main {

@@ -10,9 +10,12 @@ export interface Chunk {
 	pageNumber?: number;
 	chunkIndex: number;
 	text: string;
+	vector?: number[];
 }
 
-export type DocumentStatus = 'pending' | 'indexing' | 'ready' | 'error';
+export type DocumentStatus = 'pending' | 'indexing' | 'embedding' | 'ready' | 'error';
+
+export type EmbeddingModel = 'minilm' | 'mpnet' | 'openai';
 
 export interface DocumentEntry {
 	id: string;

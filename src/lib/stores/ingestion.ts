@@ -2,13 +2,15 @@ import { writable, derived } from 'svelte/store';
 import type { DocumentEntry, Chunk } from '$lib/types';
 import { parseFile } from '$lib/rag/parser';
 import { chunkDocument } from '$lib/rag/chunker';
+import { loadModel, embedTexts } from '$lib/rag/embeddings';
 
 export const documents = writable<DocumentEntry[]>([]);
 export const chunkMap = writable<Map<string, Chunk[]>>(new Map());
 export const chunkingProgress = writable<{ done: number; total: number } | null>(null);
+export const embeddingProgress = writable<{ done: number; total: number } | null>(null);
 
 export const isIngesting = derived(documents, ($docs) =>
-	$docs.some((d) => d.status === 'indexing')
+	$docs.some((d) => d.status === 'indexing' || d.status === 'embedding')
 );
 
 export const readyCount = derived(
@@ -40,14 +42,34 @@ export async function ingestFiles(files: File[]): Promise<void> {
 		);
 
 		try {
+			// Parse + chunk
 			const pages = await parseFile(file);
 			chunkingProgress.set({ done: 0, total: Math.max(pages.length, 1) });
 
 			const chunks = await chunkDocument(pages, file.name, (done, total) => {
 				chunkingProgress.set({ done, total });
 			});
+			chunkingProgress.set(null);
 
-			chunkMap.update((m) => new Map(m).set(file.name, chunks));
+			// Embed chunks
+			documents.update((docs) =>
+				docs.map((d) => (d.id === entryId ? { ...d, status: 'embedding' } : d))
+			);
+			embeddingProgress.set({ done: 0, total: chunks.length });
+
+			await loadModel();
+
+			const vectors = await embedTexts(
+				chunks.map((c) => c.text),
+				(done, total) => embeddingProgress.set({ done, total })
+			);
+
+			const embeddedChunks: Chunk[] = chunks.map((c, idx) => ({
+				...c,
+				vector: vectors[idx]
+			}));
+
+			chunkMap.update((m) => new Map(m).set(file.name, embeddedChunks));
 			documents.update((docs) =>
 				docs.map((d) =>
 					d.id === entryId ? { ...d, status: 'ready', chunkCount: chunks.length } : d
@@ -59,6 +81,7 @@ export async function ingestFiles(files: File[]): Promise<void> {
 			);
 		} finally {
 			chunkingProgress.set(null);
+			embeddingProgress.set(null);
 		}
 	}
 }
