@@ -3,8 +3,8 @@
 > Browser-first RAG document explorer with a dark-fantasy RPG aesthetic.
 > Upload PDFs and Markdown scrolls, embed them locally with Transformers.js, and interrogate them through the Oracle — a streaming AI chat powered by Fireworks.ai.
 
-![CI](https://github.com/arif-dewi/nexus-recall/actions/workflows/ci.yml/badge.svg)
-![E2E](https://github.com/arif-dewi/nexus-recall/actions/workflows/e2e.yml/badge.svg)
+![CI](https://github.com/arifdewiuae/nexus-recall/actions/workflows/ci.yml/badge.svg)
+![E2E](https://github.com/arifdewiuae/nexus-recall/actions/workflows/e2e.yml/badge.svg)
 
 ---
 
