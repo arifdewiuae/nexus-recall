@@ -1,6 +1,13 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { upsertChunks, similaritySearch, deleteDocument, listDocuments, cosineSimilarity, _resetDB } from './vector-store';
+import {
+	upsertChunks,
+	similaritySearch,
+	deleteDocument,
+	listDocuments,
+	cosineSimilarity,
+	_resetDB
+} from './vector-store';
 import type { EmbeddedChunk } from './vector-store';
 
 function makeChunk(overrides: Partial<EmbeddedChunk> & { vector: number[] }): EmbeddedChunk {
@@ -48,9 +55,27 @@ describe('vector store (IndexedDB)', () => {
 	it('upsert → search round-trip returns closest chunk', async () => {
 		const dims = 8;
 		const chunks: EmbeddedChunk[] = [
-			makeChunk({ id: 'c1', source: 'doc.pdf', chunkIndex: 0, text: 'alpha', vector: unitVec(dims, 0) }),
-			makeChunk({ id: 'c2', source: 'doc.pdf', chunkIndex: 1, text: 'beta', vector: unitVec(dims, 1) }),
-			makeChunk({ id: 'c3', source: 'doc.pdf', chunkIndex: 2, text: 'gamma', vector: unitVec(dims, 2) })
+			makeChunk({
+				id: 'c1',
+				source: 'doc.pdf',
+				chunkIndex: 0,
+				text: 'alpha',
+				vector: unitVec(dims, 0)
+			}),
+			makeChunk({
+				id: 'c2',
+				source: 'doc.pdf',
+				chunkIndex: 1,
+				text: 'beta',
+				vector: unitVec(dims, 1)
+			}),
+			makeChunk({
+				id: 'c3',
+				source: 'doc.pdf',
+				chunkIndex: 2,
+				text: 'gamma',
+				vector: unitVec(dims, 2)
+			})
 		];
 
 		await upsertChunks(chunks, 'doc.pdf');
