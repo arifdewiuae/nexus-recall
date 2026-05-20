@@ -37,16 +37,24 @@
 
 	const mdHtml = $derived.by(() => {
 		if (isPdf) return '';
-		const hits = $hitChunks;
-		const raw = sorted
-			.map((c) => {
-				const hl = hits.get(c.id);
-				if (hl === undefined) return c.text;
-				const cls = hl === 0 ? 'hl-1' : hl <= 2 ? 'hl-2' : 'hl-3';
-				return `<mark class="chunk ${cls}">${c.text}</mark>`;
-			})
-			.join('\n\n');
-		return marked.parse(raw) as string;
+		// Reconstruct full doc, de-duplicating overlapping chunk boundaries
+		let full = '';
+		for (const c of sorted) {
+			if (!full) {
+				full = c.text;
+				continue;
+			}
+			const maxOverlap = Math.min(full.length, c.text.length, 300);
+			let overlap = 0;
+			for (let len = maxOverlap; len > 20; len--) {
+				if (full.endsWith(c.text.slice(0, len))) {
+					overlap = len;
+					break;
+				}
+			}
+			full += '\n\n' + c.text.slice(overlap);
+		}
+		return marked.parse(full) as string;
 	});
 
 	let parchmentEl = $state<HTMLDivElement | null>(null);

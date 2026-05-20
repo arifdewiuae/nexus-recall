@@ -16,7 +16,11 @@ async function waitForReady(page: Page, timeout = 90_000) {
 	await expect(page.locator('.badge.ready').first()).toBeVisible({ timeout });
 }
 
-function mockChatApi(page: Page, text: string, citations: Parameters<typeof buildMockStream>[1] = []) {
+function mockChatApi(
+	page: Page,
+	text: string,
+	citations: Parameters<typeof buildMockStream>[1] = []
+) {
 	return page.route('**/api/chat', async (route) => {
 		await route.fulfill({
 			status: 200,
@@ -53,8 +57,27 @@ test.describe('Nexus Recall — Golden Path', () => {
 		await expect(page.locator('.tome-toolbar .badge.ready')).toBeVisible();
 		await expect(page.locator('.tome-toolbar')).toContainText('CHUNKS');
 
-		// Document viewer renders text
+		// Document viewer renders text and markdown is parsed to HTML (not raw)
 		await expect(page.locator('.parchment')).toContainText('Alchemist');
+		await expect(page.locator('.md-body h1, .md-body h2')).toBeVisible();
+		await expect(page.locator('.parchment')).not.toContainText('## ');
+	});
+
+	test('SUMMON SAMPLE loads the built-in demo document', async ({ page }) => {
+		await page.goto('/');
+		await expect(page.getByText('NO SCROLLS LOADED')).toBeVisible();
+
+		await page.getByRole('button', { name: 'SUMMON SAMPLE' }).click();
+
+		// Tab for dragon-codex.md appears
+		await expect(page.getByText('dragon-codex.md')).toBeVisible({ timeout: 5_000 });
+
+		// Wait for indexing to complete
+		await waitForReady(page);
+
+		// Markdown headings rendered as HTML
+		await expect(page.locator('.md-body h1, .md-body h2')).toBeVisible();
+		await expect(page.locator('.md-body')).toContainText('Retrieval-Augmented Generation');
 	});
 
 	test('chat responds and shows oracle message', async ({ page }) => {
@@ -62,10 +85,10 @@ test.describe('Nexus Recall — Golden Path', () => {
 		await uploadFixture(page);
 		await waitForReady(page);
 
-		await mockChatApi(page, 'The Philosopher\'s Stone enables transmutation of lead into gold.');
+		await mockChatApi(page, "The Philosopher's Stone enables transmutation of lead into gold.");
 
 		const input = page.getByLabel('Ask the Oracle');
-		await input.fill('What is the Philosopher\'s Stone?');
+		await input.fill("What is the Philosopher's Stone?");
 		await input.press('Enter');
 
 		// Oracle bubble appears with our mocked text
@@ -85,7 +108,7 @@ test.describe('Nexus Recall — Golden Path', () => {
 		]);
 
 		const input = page.getByLabel('Ask the Oracle');
-		await input.fill('What are lead\'s alchemical properties?');
+		await input.fill("What are lead's alchemical properties?");
 		await input.press('Enter');
 
 		// Wait for citation chip to appear
@@ -118,6 +141,30 @@ test.describe('Nexus Recall — Golden Path', () => {
 		// Close the tab via the × button
 		await page.locator('.tab .close').click();
 		await expect(page.getByText('NO SCROLLS LOADED')).toBeVisible({ timeout: 5_000 });
+	});
+});
+
+test.describe('Settings modal', () => {
+	test('opens and closes the API key settings modal', async ({ page }) => {
+		await page.goto('/');
+
+		await page.getByRole('button', { name: 'Open API key settings' }).click();
+		await expect(page.getByRole('dialog')).toBeVisible();
+		await expect(page.getByText('API KEYS')).toBeVisible();
+
+		// Close via ESC
+		await page.keyboard.press('Escape');
+		await expect(page.getByRole('dialog')).not.toBeVisible();
+	});
+
+	test('SCROLLS chip increments after loading a document', async ({ page }) => {
+		await page.goto('/');
+		await expect(page.getByText('00')).toBeVisible();
+
+		await uploadFixture(page);
+		await waitForReady(page);
+
+		await expect(page.getByText('01')).toBeVisible();
 	});
 });
 

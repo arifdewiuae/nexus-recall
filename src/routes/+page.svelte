@@ -341,7 +341,7 @@
 		></div>
 
 		<!-- Oracle terminal (right pane) -->
-		<div class="oracle">
+		<div class="oracle" style={tomeWidth ? 'flex:1 1 0;width:auto' : ''}>
 			<ChatPanel documentFilter={activeSource} onCiteClick={handleCiteClick} />
 		</div>
 	</div>
