@@ -146,7 +146,7 @@
 </div>
 
 <!-- Body -->
-<div class="oracle-body">
+<div class="oracle-body" role="log" aria-live="polite" aria-label="Oracle conversation">
 	{#if chat.messages.length === 0 && !isBusy}
 		<div class="oracle-empty">
 			<div class="wiz-bob">
@@ -188,6 +188,7 @@
 									class="cite"
 									class:tier-2={i >= 2}
 									title={cite.quote}
+									aria-label="Jump to citation: {cite.source}{cite.page > 0 ? `, page ${cite.page}` : ''}"
 									onclick={() => onCiteClick?.(cite)}
 								>
 									{cite.source}{cite.page > 0 ? ` · p.${cite.page}` : ''}
@@ -225,6 +226,7 @@
 </div>
 
 <!-- Input -->
+<span id="oracle-hint" style="display:none">Press Enter to send, Cmd+K to focus</span>
 <div class="oracle-input-wrap">
 	{#if documentFilter}
 		<div
@@ -241,6 +243,8 @@
 			bind:value={inputValue}
 			onkeydown={onKeydown}
 			placeholder={$readyCount > 0 ? 'Ask anything… (⌘K)' : 'Load a scroll first…'}
+			aria-label="Ask the Oracle"
+			aria-describedby="oracle-hint"
 			disabled={$readyCount === 0 || isBusy}
 			autocomplete="off"
 			spellcheck="false"

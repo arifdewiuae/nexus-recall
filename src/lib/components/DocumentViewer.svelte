@@ -7,10 +7,9 @@
 		chunks: Chunk[];
 		focusedPage?: number | null;
 		focusNonce?: number;
-		onChunkClick?: (chunk: Chunk) => void;
 	}
 
-	let { source, chunks, focusedPage = null, focusNonce = 0, onChunkClick }: Props = $props();
+	let { source, chunks, focusedPage = null, focusNonce = 0 }: Props = $props();
 
 	const isPdf = $derived(source.toLowerCase().endsWith('.pdf'));
 
@@ -56,22 +55,16 @@
 		{#each pageGroups as [page, pageChunks] (page)}
 			<div class="page-sep" data-page={page}>── PAGE {page} ──</div>
 			{#each pageChunks as chunk (chunk.id)}
-				<!-- svelte-ignore a11y_click_events_have_key_events -->
-				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<span
 					class="chunk {hlClass(chunk)}"
-					onclick={() => onChunkClick?.(chunk)}
 					title={hlClass(chunk) ? `Chunk #${chunk.chunkIndex + 1} · matched` : undefined}
 				>{chunk.text}</span>{' '}
 			{/each}
 		{/each}
 	{:else}
 		{#each sorted as chunk (chunk.id)}
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<span
 				class="chunk {hlClass(chunk)}"
-				onclick={() => onChunkClick?.(chunk)}
 				title={hlClass(chunk) ? `Chunk #${chunk.chunkIndex + 1} · matched` : undefined}
 			>{chunk.text}</span>{' '}
 		{/each}

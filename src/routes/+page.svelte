@@ -230,16 +230,16 @@
 				</div>
 			{:else}
 				<!-- Tabbar -->
-				<div class="tabbar">
+				<div class="tabbar" role="tablist" aria-label="Open documents">
 					{#each $documents as doc (doc.id)}
-						<!-- svelte-ignore a11y_interactive_supports_focus -->
 						<div
 							class="tab"
 							class:active={activeSource === doc.source}
 							role="tab"
 							aria-selected={activeSource === doc.source}
+							tabindex={activeSource === doc.source ? 0 : -1}
 							onclick={() => (activeSource = doc.source)}
-							onkeydown={(e) => e.key === 'Enter' && (activeSource = doc.source)}
+							onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (activeSource = doc.source)}
 						>
 							<span class="badge {doc.status}" style="font-size:6px;padding:3px 6px;">
 								{doc.status === 'indexing' || doc.status === 'embedding'
