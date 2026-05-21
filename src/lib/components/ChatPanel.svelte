@@ -277,7 +277,9 @@
 				</div>
 				<div class="bubble">
 					<div class="bubble-name">ORACLE</div>
-					<span class="typewriter" style="color:var(--text-dim)"></span>
+					<span class="thinking-hint">
+						{provider === 'anthropic' ? 'CLAUDE' : 'MINIMAX'} IS CONSULTING THE SCROLLS
+					</span><span class="typewriter" style="color:var(--text-dim)"></span>
 				</div>
 			</div>
 		{/if}
