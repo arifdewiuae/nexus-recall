@@ -739,7 +739,9 @@ textarea {
 	vertical-align: super;
 	line-height: 1;
 }
-.cite-inline:hover { text-decoration: underline; }
+.cite-inline:hover {
+	text-decoration: underline;
+}
 
 .thinking-hint {
 	color: var(--text-dim);
@@ -749,17 +751,52 @@ textarea {
 	animation: blink 1.6s steps(2) infinite;
 }
 
-.oracle-md p { margin: 0 0 10px; }
-.oracle-md p:last-child { margin-bottom: 0; }
-.oracle-md strong { color: var(--parchment-ink-strong, var(--text)); font-weight: 700; }
-.oracle-md em { font-style: italic; opacity: 0.85; }
-.oracle-md ul, .oracle-md ol { margin: 0 0 10px; padding-left: 18px; }
-.oracle-md li { margin-bottom: 4px; }
-.oracle-md code { background: var(--bg-deep); color: var(--accent); padding: 1px 5px; font-size: 11px; font-family: 'JetBrains Mono', monospace; }
-.oracle-md h1, .oracle-md h2, .oracle-md h3 { font-family: 'Press Start 2P', monospace; color: var(--accent); margin: 12px 0 6px; line-height: 1.6; }
-.oracle-md h1 { font-size: 11px; }
-.oracle-md h2 { font-size: 9px; }
-.oracle-md h3 { font-size: 8px; }
+.oracle-md p {
+	margin: 0 0 10px;
+}
+.oracle-md p:last-child {
+	margin-bottom: 0;
+}
+.oracle-md strong {
+	color: var(--parchment-ink-strong, var(--text));
+	font-weight: 700;
+}
+.oracle-md em {
+	font-style: italic;
+	opacity: 0.85;
+}
+.oracle-md ul,
+.oracle-md ol {
+	margin: 0 0 10px;
+	padding-left: 18px;
+}
+.oracle-md li {
+	margin-bottom: 4px;
+}
+.oracle-md code {
+	background: var(--bg-deep);
+	color: var(--accent);
+	padding: 1px 5px;
+	font-size: 11px;
+	font-family: 'JetBrains Mono', monospace;
+}
+.oracle-md h1,
+.oracle-md h2,
+.oracle-md h3 {
+	font-family: 'Press Start 2P', monospace;
+	color: var(--accent);
+	margin: 12px 0 6px;
+	line-height: 1.6;
+}
+.oracle-md h1 {
+	font-size: 11px;
+}
+.oracle-md h2 {
+	font-size: 9px;
+}
+.oracle-md h3 {
+	font-size: 8px;
+}
 
 .typewriter::after {
 	content: '';

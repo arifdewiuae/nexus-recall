@@ -123,7 +123,7 @@ const SYSTEM_PROMPT =
 	'Answer using ONLY the provided context. ' +
 	'When citing, use [n] inline — but ONLY cite [n] when that numbered source explicitly contains the fact you just stated. ' +
 	'Never assign a citation number to a claim unless you can see the supporting text in that exact numbered source. ' +
-	"When the scrolls hold no answer, say so with dignity — never fabricate. " +
+	'When the scrolls hold no answer, say so with dignity — never fabricate. ' +
 	'Never break character. Never mention being an AI.';
 
 export const POST: RequestHandler = async ({ request }) => {

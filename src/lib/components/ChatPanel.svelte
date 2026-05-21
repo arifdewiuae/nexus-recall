@@ -139,7 +139,11 @@
 	function clearChat() {
 		chat.messages = [];
 		searchError = '';
-		try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+		try {
+			localStorage.removeItem(STORAGE_KEY);
+		} catch {
+			/* ignore */
+		}
 	}
 
 	function getCitations(msg: (typeof chat.messages)[0]): Citation[] {
@@ -210,7 +214,13 @@
 </div>
 
 <!-- Body -->
-<div class="oracle-body" bind:this={oracleBodyEl} role="log" aria-live="polite" aria-label="Oracle conversation">
+<div
+	class="oracle-body"
+	bind:this={oracleBodyEl}
+	role="log"
+	aria-live="polite"
+	aria-label="Oracle conversation"
+>
 	{#if chat.messages.length === 0 && !isBusy}
 		<div class="oracle-empty">
 			<div class="wiz-bob">
@@ -239,36 +249,44 @@
 				{@const citations = getCitations(message)}
 				{@const isLastStreaming = isBusy && message === chat.lastMessage}
 				{#if text.trim() || isLastStreaming}
-				<div class="message">
-					<div class="portrait">
-						<Sprite name="wizard" scale={2} />
-					</div>
-					<div class="bubble">
-						<div class="bubble-name">ORACLE</div>
-						<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-						<div class="oracle-md" class:typewriter={isLastStreaming} onclick={(e) => handleOracleMdClick(e, citations)} role="article">{@html renderOracleHtml(text, citations)}</div>
-						{#if citations.length > 0 && text.trim()}
-							<div class="citations">
-								{#each citations as cite, i (i)}
-									<button
-										class="cite"
-										class:tier-2={i >= 2}
-										title={cite.quote}
-										aria-label="Jump to citation: {cite.source}{cite.page > 0
-											? `, page ${cite.page}`
-											: ''}"
-										onclick={() => onCiteClick?.(cite)}
-									>
-										{cite.source}{cite.page > 0 ? ` · p.${cite.page}` : ''}
-									</button>
-								{/each}
+					<div class="message">
+						<div class="portrait">
+							<Sprite name="wizard" scale={2} />
+						</div>
+						<div class="bubble">
+							<div class="bubble-name">ORACLE</div>
+							<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+							<div
+								class="oracle-md"
+								class:typewriter={isLastStreaming}
+								onclick={(e) => handleOracleMdClick(e, citations)}
+								role="article"
+							>
+								<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+								{@html renderOracleHtml(text, citations)}
 							</div>
-						{/if}
+							{#if citations.length > 0 && text.trim()}
+								<div class="citations">
+									{#each citations as cite, i (i)}
+										<button
+											class="cite"
+											class:tier-2={i >= 2}
+											title={cite.quote}
+											aria-label="Jump to citation: {cite.source}{cite.page > 0
+												? `, page ${cite.page}`
+												: ''}"
+											onclick={() => onCiteClick?.(cite)}
+										>
+											{cite.source}{cite.page > 0 ? ` · p.${cite.page}` : ''}
+										</button>
+									{/each}
+								</div>
+							{/if}
+						</div>
 					</div>
-				</div>
 				{/if}
 			{/if}
-			{/each}
+		{/each}
 
 		{#if chat.status === 'submitted'}
 			<div class="message">
@@ -291,7 +309,6 @@
 				{chat.error?.message ?? searchError}
 			</div>
 		{/if}
-
 	{/if}
 </div>
 

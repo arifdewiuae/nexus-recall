@@ -103,7 +103,10 @@ test.describe('Nexus Recall — Golden Path', () => {
 		await uploadFixture(page);
 		await waitForReady(page);
 
-		await mockChatApi(page, 'The **Philosopher\'s Stone** enables *transmutation* of lead into gold.');
+		await mockChatApi(
+			page,
+			"The **Philosopher's Stone** enables *transmutation* of lead into gold."
+		);
 
 		const input = page.getByLabel('Ask the Oracle');
 		await input.fill("What is the Philosopher's Stone?");

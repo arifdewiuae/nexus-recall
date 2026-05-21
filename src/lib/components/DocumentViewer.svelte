@@ -13,7 +13,14 @@
 		focusNonce?: number;
 	}
 
-	let { source, chunks, focusedPage = null, focusedQuote = null, focusedChunkId = null, focusNonce = 0 }: Props = $props();
+	let {
+		source,
+		chunks,
+		focusedPage = null,
+		focusedQuote = null,
+		focusedChunkId = null,
+		focusNonce = 0
+	}: Props = $props();
 
 	const isPdf = $derived(source.toLowerCase().endsWith('.pdf'));
 
@@ -69,7 +76,7 @@
 		// Normalize: strip markdown syntax + typographic special chars, collapse whitespace
 		function norm(s: string) {
 			return s
-				.replace(/[#*_`\[\]>~|—–·]/g, ' ')
+				.replace(/[#*_`[\]>~|—–·]/g, ' ')
 				.replace(/\s+/g, ' ')
 				.trim()
 				.toLowerCase();
@@ -77,7 +84,11 @@
 		// Split by lines so a multi-paragraph chunk doesn't force a cross-element match
 		const candidates = quote
 			.split('\n')
-			.map((l) => norm(l).replace(/^\d+\.\s+/, '').replace(/^[-•]\s+/, ''))
+			.map((l) =>
+				norm(l)
+					.replace(/^\d+\.\s+/, '')
+					.replace(/^[-•]\s+/, '')
+			)
 			.filter((l) => l.length >= 15);
 
 		if (candidates.length === 0) return null;
@@ -288,9 +299,18 @@
 	}
 
 	@keyframes cite-flash {
-		0%   { outline-color: var(--accent); background: color-mix(in srgb, var(--accent) 30%, transparent); }
-		60%  { outline-color: var(--accent); background: color-mix(in srgb, var(--accent) 30%, transparent); }
-		100% { outline-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+		0% {
+			outline-color: var(--accent);
+			background: color-mix(in srgb, var(--accent) 30%, transparent);
+		}
+		60% {
+			outline-color: var(--accent);
+			background: color-mix(in srgb, var(--accent) 30%, transparent);
+		}
+		100% {
+			outline-color: var(--accent);
+			background: color-mix(in srgb, var(--accent) 12%, transparent);
+		}
 	}
 
 	/* Applied to the block element that contains the cited quote */
