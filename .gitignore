@@ -25,5 +25,9 @@ vite.config.ts.timestamp-*
 test-results
 playwright-report
 
+# Evals — generated output, not source
+evals/scores.json
+
 # Local planning docs
 \# RAG Document Explorer with Intelligent.md
+.env*.local

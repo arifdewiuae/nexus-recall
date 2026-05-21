@@ -1,0 +1,102 @@
+[
+	{
+		"id": "q01",
+		"question": "What is the primary goal of transmutation in alchemy?",
+		"anchorPhrases": ["lead into gold", "Philosopher's Stone"]
+	},
+	{
+		"id": "q02",
+		"question": "What are the four classical elements in alchemical theory?",
+		"anchorPhrases": ["earth, water, fire", "classical elements"]
+	},
+	{
+		"id": "q03",
+		"question": "What qualities were assigned to lead in alchemical theory?",
+		"anchorPhrases": ["cold and dry"]
+	},
+	{
+		"id": "q04",
+		"question": "What is the Elixir of Life?",
+		"anchorPhrases": ["Elixir of Life", "Elixir Vitae", "immortality"]
+	},
+	{
+		"id": "q05",
+		"question": "What is the Prima Materia?",
+		"anchorPhrases": ["First Matter", "Prima Materia"]
+	},
+	{
+		"id": "q06",
+		"question": "What are the three principles in Paracelsus's tria prima?",
+		"anchorPhrases": ["tria prima", "sulfur", "mercury", "salt"]
+	},
+	{
+		"id": "q07",
+		"question": "What does sulfur represent in Paracelsus's system?",
+		"anchorPhrases": ["sulfur", "soul"]
+	},
+	{
+		"id": "q08",
+		"question": "Which celestial body was gold associated with?",
+		"anchorPhrases": ["Gold", "Sun"]
+	},
+	{
+		"id": "q09",
+		"question": "Which planet corresponded to lead?",
+		"anchorPhrases": ["Lead", "Saturn"]
+	},
+	{
+		"id": "q10",
+		"question": "Which metal was linked to the planet Mars?",
+		"anchorPhrases": ["Iron", "Mars"]
+	},
+	{
+		"id": "q11",
+		"question": "What was distillation used for in alchemical laboratories?",
+		"anchorPhrases": ["distillation", "volatile", "vaporized"]
+	},
+	{
+		"id": "q12",
+		"question": "What is calcination and what does it produce?",
+		"anchorPhrases": ["calcination", "calx", "powder"]
+	},
+	{
+		"id": "q13",
+		"question": "What is sublimation in alchemy?",
+		"anchorPhrases": ["sublimation", "vaporized directly"]
+	},
+	{
+		"id": "q14",
+		"question": "What role does putrefaction play in the Great Work?",
+		"anchorPhrases": ["putrefaction", "blackening", "nigredo"]
+	},
+	{
+		"id": "q15",
+		"question": "What are the four stages of the Magnum Opus?",
+		"anchorPhrases": ["nigredo", "albedo", "citrinitas", "rubedo"]
+	},
+	{
+		"id": "q16",
+		"question": "What does rubedo represent?",
+		"anchorPhrases": ["rubedo", "reddening"]
+	},
+	{
+		"id": "q17",
+		"question": "What alchemical work did Isaac Newton pursue?",
+		"anchorPhrases": ["Newton", "alchemical"]
+	},
+	{
+		"id": "q18",
+		"question": "Who was Jabir ibn Hayyan?",
+		"anchorPhrases": ["Jabir ibn Hayyan", "Arab polymath"]
+	},
+	{
+		"id": "q19",
+		"question": "What did Robert Boyle argue in The Sceptical Chymist?",
+		"anchorPhrases": ["Sceptical Chymist", "Boyle", "corpuscles"]
+	},
+	{
+		"id": "q20",
+		"question": "How did Lavoisier contribute to the end of alchemical theory?",
+		"anchorPhrases": ["Lavoisier", "oxygen", "conservation of mass"]
+	}
+]

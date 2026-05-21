@@ -156,6 +156,13 @@ export const POST: RequestHandler = async ({ request }) => {
 				while (true) {
 					const { done, value } = await reader.read();
 					if (done) break;
+					// Reasoning-model events (reasoning-start/delta/end) are internal
+					// chain-of-thought tokens — the client UI doesn't display them and
+					// AI SDK v6 gets stuck in streaming state when it receives them.
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					const evtType = (value as any).type as string;
+					if (evtType.startsWith('reasoning-')) continue;
+
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					if ((value as any).type === 'finish' && (value as any).finishReason === 'error') {
 						const msg =
