@@ -288,6 +288,9 @@
 							<div class="bubble-name">ORACLE</div>
 							{#if isLastStreaming && !text.trim()}
 								<span class="thinking-hint">PONDERING THE SCROLLS</span><span class="typewriter" style="color:var(--text-dim)"></span>
+								{#if reasoning && $showReasoning}
+									<div class="reasoning-body reasoning-live">{reasoning}</div>
+								{/if}
 							{:else}
 							<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 							<div

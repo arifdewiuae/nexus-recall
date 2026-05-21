@@ -155,6 +155,16 @@ export const POST: RequestHandler = async ({ request }) => {
 			});
 
 			let reasoningText = '';
+			let reasoningFlushCount = 0;
+
+			const flushReasoning = () => {
+				if (!reasoningText) return;
+				writer.write({
+					type: 'message-metadata',
+					messageMetadata: { citations, reasoning: reasoningText }
+				});
+			};
+
 			const reader = result.toUIMessageStream().getReader();
 			try {
 				while (true) {
@@ -163,12 +173,18 @@ export const POST: RequestHandler = async ({ request }) => {
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					const evtType = (value as any).type as string;
 
-					// Buffer reasoning tokens — don't forward to client (AI SDK v6 gets stuck
-					// in streaming state when it receives reasoning-* events).
+					// Intercept reasoning-* events — AI SDK v6 gets stuck in streaming state
+					// when they reach the client. Instead we flush them incrementally as
+					// message-metadata so the UI can show live chain-of-thought.
 					if (evtType.startsWith('reasoning-')) {
 						if (evtType === 'reasoning-delta') {
 							// eslint-disable-next-line @typescript-eslint/no-explicit-any
 							reasoningText += (value as any).delta ?? '';
+							// Flush every 6 tokens so the client sees reasoning build up live
+							// without flooding the stream with per-token metadata events.
+							if (++reasoningFlushCount % 6 === 0) flushReasoning();
+						} else if (evtType === 'reasoning-end') {
+							flushReasoning(); // final flush before text tokens start
 						}
 						continue;
 					}
@@ -189,15 +205,6 @@ export const POST: RequestHandler = async ({ request }) => {
 				}
 			} finally {
 				reader.releaseLock();
-			}
-
-			// Emit buffered reasoning as metadata so the client can show it in a
-			// collapsible block without breaking the AI SDK streaming state machine.
-			if (reasoningText) {
-				writer.write({
-					type: 'message-metadata',
-					messageMetadata: { citations, reasoning: reasoningText }
-				});
 			}
 		},
 		onError: (error) => `Error: ${String(error)}`
