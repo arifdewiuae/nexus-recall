@@ -269,6 +269,9 @@
 						</div>
 						<div class="bubble">
 							<div class="bubble-name">ORACLE</div>
+							{#if isLastStreaming && !text.trim()}
+								<span class="thinking-hint">PONDERING THE SCROLLS</span><span class="typewriter" style="color:var(--text-dim)"></span>
+							{:else}
 							<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 							<div
 								class="oracle-md"
@@ -279,6 +282,7 @@
 								<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 								{@html renderOracleHtml(text, citations)}
 							</div>
+							{/if}
 							{#if citations.length > 0 && text.trim()}
 								<div class="citations">
 									{#each citations as cite, i (i)}
