@@ -751,18 +751,40 @@ textarea {
 	animation: blink 1.6s steps(2) infinite;
 }
 
-.reasoning-block {
-	margin-top: 8px;
-	padding: 8px 10px;
+.reasoning-details {
+	margin-top: 10px;
 	border-left: 2px solid var(--text-dim);
+	opacity: 0.65;
+}
+.reasoning-details > summary {
+	font-family: 'Press Start 2P', monospace;
+	font-size: 7px;
+	letter-spacing: 0.5px;
+	color: var(--text-dim);
+	padding: 5px 8px;
+	cursor: pointer;
+	user-select: none;
+	list-style: none;
+}
+.reasoning-details > summary::before {
+	content: '▶ ';
+	font-size: 6px;
+}
+.reasoning-details[open] > summary::before {
+	content: '▼ ';
+}
+.reasoning-details > summary::-webkit-details-marker {
+	display: none;
+}
+.reasoning-body {
+	padding: 6px 10px 8px;
 	color: var(--text-dim);
 	font-family: 'JetBrains Mono', monospace;
 	font-size: 9px;
 	line-height: 1.6;
-	max-height: 120px;
+	max-height: 180px;
 	overflow-y: auto;
 	white-space: pre-wrap;
-	opacity: 0.6;
 }
 
 .oracle-md p {

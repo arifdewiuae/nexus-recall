@@ -151,13 +151,26 @@ export const POST: RequestHandler = async ({ request }) => {
 				}
 			});
 
+			let reasoningText = '';
 			const reader = result.toUIMessageStream().getReader();
 			try {
 				while (true) {
 					const { done, value } = await reader.read();
 					if (done) break;
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					if ((value as any).type === 'finish' && (value as any).finishReason === 'error') {
+					const evtType = (value as any).type as string;
+
+					// Buffer reasoning tokens — don't forward to client (AI SDK v6 gets stuck
+					// in streaming state when it receives reasoning-* events).
+					if (evtType.startsWith('reasoning-')) {
+						if (evtType === 'reasoning-delta') {
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							reasoningText += (value as any).delta ?? '';
+						}
+						continue;
+					}
+
+					if (evtType === 'finish' && (value as any).finishReason === 'error') {
 						const msg =
 							capturedError instanceof Error
 								? capturedError.message
@@ -173,6 +186,15 @@ export const POST: RequestHandler = async ({ request }) => {
 				}
 			} finally {
 				reader.releaseLock();
+			}
+
+			// Emit buffered reasoning as metadata so the client can show it in a
+			// collapsible block without breaking the AI SDK streaming state machine.
+			if (reasoningText) {
+				writer.write({
+					type: 'message-metadata',
+					messageMetadata: { citations, reasoning: reasoningText }
+				});
 			}
 		},
 		onError: (error) => `Error: ${String(error)}`

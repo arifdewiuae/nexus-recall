@@ -8,6 +8,7 @@
 	import { similaritySearch } from '$lib/rag/vector-store';
 	import { readyCount, hitChunks } from '$lib/stores/ingestion';
 	import { apiKeys } from '$lib/stores/apiKeys';
+	import { showReasoning } from '$lib/stores/reasoning';
 	import { SvelteMap } from 'svelte/reactivity';
 	import Sprite from './Sprite.svelte';
 	import PixelIcon from './PixelIcon.svelte';
@@ -161,20 +162,18 @@
 	}
 
 	function getCitations(msg: (typeof chat.messages)[0]): Citation[] {
-		const meta = msg.metadata as { citations?: Citation[] } | null | undefined;
+		const meta = msg.metadata as { citations?: Citation[]; reasoning?: string } | null | undefined;
 		return meta?.citations ?? [];
+	}
+
+	function getMsgReasoning(msg: (typeof chat.messages)[0]): string {
+		const meta = msg.metadata as { citations?: Citation[]; reasoning?: string } | null | undefined;
+		return meta?.reasoning ?? '';
 	}
 
 	function getTextContent(msg: (typeof chat.messages)[0]): string {
 		return msg.parts
 			.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
-			.map((p) => p.text)
-			.join('');
-	}
-
-	function getReasoningContent(msg: (typeof chat.messages)[0]): string {
-		return msg.parts
-			.filter((p): p is { type: 'reasoning'; text: string } => p.type === 'reasoning')
 			.map((p) => p.text)
 			.join('');
 	}
@@ -220,6 +219,16 @@
 	>
 		<span class="chip-dim">VIA</span>
 		<span class="chip-accent">{provider === 'anthropic' ? 'CLAUDE' : 'MINIMAX'}</span>
+	</button>
+	<button
+		class="chip chip-btn"
+		onclick={() => showReasoning.toggle()}
+		title={$showReasoning ? 'Hide chain-of-thought reasoning' : 'Show chain-of-thought reasoning'}
+		aria-label="Toggle reasoning display"
+		style="font-size:7px;padding:5px 8px"
+	>
+		<span class="chip-dim">THINK</span>
+		<span class="chip-accent" style={$showReasoning ? '' : 'opacity:0.4'}>{$showReasoning ? 'ON' : 'OFF'}</span>
 	</button>
 	<div class="oracle-meta">{statusLabel}</div>
 	{#if chat.messages.length > 0}
@@ -268,6 +277,7 @@
 			{:else if message.role === 'assistant'}
 				{@const text = getTextContent(message)}
 				{@const citations = getCitations(message)}
+				{@const reasoning = getMsgReasoning(message)}
 				{@const isLastStreaming = isBusy && message === chat.lastMessage}
 				{#if text.trim() || isLastStreaming}
 					<div class="message">
@@ -277,11 +287,7 @@
 						<div class="bubble">
 							<div class="bubble-name">ORACLE</div>
 							{#if isLastStreaming && !text.trim()}
-								{@const reasoning = getReasoningContent(message)}
 								<span class="thinking-hint">PONDERING THE SCROLLS</span><span class="typewriter" style="color:var(--text-dim)"></span>
-								{#if reasoning}
-									<div class="reasoning-block">{reasoning}</div>
-								{/if}
 							{:else}
 							<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 							<div
@@ -310,6 +316,12 @@
 										</button>
 									{/each}
 								</div>
+							{/if}
+							{#if reasoning && $showReasoning && !isLastStreaming}
+								<details class="reasoning-details">
+									<summary>CHAIN OF THOUGHT</summary>
+									<div class="reasoning-body">{reasoning}</div>
+								</details>
 							{/if}
 						</div>
 					</div>
