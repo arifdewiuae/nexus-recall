@@ -7,6 +7,8 @@ import { z } from 'zod';
 import { env } from '$env/dynamic/private';
 import { tryRerank } from '$lib/server/reranker';
 
+export { tryRerank as _tryRerank };
+
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 export interface _ChunkRecord {
@@ -16,6 +18,7 @@ export interface _ChunkRecord {
 	chunkIndex: number;
 	text: string;
 	vector: number[];
+	[key: string]: unknown;
 }
 
 type ChunkRecord = _ChunkRecord;
