@@ -5,6 +5,7 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { streamText, createUIMessageStream, createUIMessageStreamResponse } from 'ai';
 import { z } from 'zod';
 import { env } from '$env/dynamic/private';
+import { tryRerank } from '$lib/server/reranker';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -40,33 +41,6 @@ export const _CitationSchema = z.object({
 });
 
 export type _CitationResult = z.infer<typeof _CitationSchema>;
-
-// ── Cross-encoder reranker ─────────────────────────────────────────────────────
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _rerankerPipeline: any = null;
-
-export async function _tryRerank(question: string, chunks: ChunkRecord[]): Promise<ChunkRecord[]> {
-	if (chunks.length <= 1) return chunks;
-	try {
-		if (!_rerankerPipeline) {
-			const { pipeline, env: xEnv } = await import('@xenova/transformers');
-			xEnv.allowLocalModels = false;
-			_rerankerPipeline = await pipeline(
-				'text-classification',
-				'cross-encoder/ms-marco-MiniLM-L-6-v2'
-			);
-		}
-		const inputs = chunks.map((c) => ({ text: question, text_pair: c.text }));
-		const results: Array<{ score: number }> = await _rerankerPipeline(inputs);
-		return chunks
-			.map((c, i) => ({ chunk: c, score: results[i]?.score ?? 0 }))
-			.sort((a, b) => b.score - a.score)
-			.map(({ chunk }) => chunk);
-	} catch {
-		return chunks;
-	}
-}
 
 // ── Context assembly ───────────────────────────────────────────────────────────
 
@@ -150,7 +124,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 
 	const model = getModel(provider, resolved);
-	const ranked = await _tryRerank(question, chunks);
+	const ranked = await tryRerank(question, chunks);
 	const topChunks = ranked.slice(0, 8);
 	const context = _assembleContext(topChunks);
 

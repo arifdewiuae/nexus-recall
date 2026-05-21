@@ -64,6 +64,13 @@
 
 	let inputValue = $state('');
 	let isSearching = $state(false);
+	let warmedUp = $state(false);
+
+	function warmup() {
+		if (warmedUp) return;
+		warmedUp = true;
+		fetch('/api/warmup').catch(() => {});
+	}
 	let searchError = $state('');
 	let oracleBodyEl = $state<HTMLDivElement | null>(null);
 	let inputEl = $state<HTMLInputElement | null>(null);
@@ -83,6 +90,13 @@
 						? 'ERROR'
 						: 'IDLE'
 	);
+
+	// Warm up the reranker pipeline as soon as the first scroll is ready — the
+	// user is about to ask something and we don't want them to pay the cold-start
+	// cost on their first question.
+	$effect(() => {
+		if ($readyCount > 0) warmup();
+	});
 
 	$effect(() => {
 		void chat.messages;
@@ -329,6 +343,7 @@
 			type="text"
 			bind:value={inputValue}
 			onkeydown={onKeydown}
+			onfocus={warmup}
 			placeholder={$readyCount > 0 ? 'Ask anything… (⌘K)' : 'Load a scroll first…'}
 			aria-label="Ask the Oracle"
 			aria-describedby="oracle-hint"
