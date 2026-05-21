@@ -2,12 +2,7 @@ import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
-import {
-	generateObject,
-	streamText,
-	createUIMessageStream,
-	createUIMessageStreamResponse
-} from 'ai';
+import { streamText, createUIMessageStream, createUIMessageStreamResponse } from 'ai';
 import { z } from 'zod';
 import { env } from '$env/dynamic/private';
 
@@ -38,7 +33,8 @@ export const _CitationSchema = z.object({
 		z.object({
 			source: z.string(),
 			page: z.number(),
-			quote: z.string().max(200)
+			quote: z.string().max(200),
+			chunkId: z.string().optional()
 		})
 	)
 });
@@ -116,15 +112,19 @@ function getModel(provider: string = 'fireworks', keys: ResolvedKeys) {
 		baseURL: 'https://api.fireworks.ai/inference/v1',
 		apiKey: keys.fireworksKey
 	});
-	return fireworks('accounts/fireworks/models/llama-v3p1-8b-instruct');
+	return fireworks('accounts/fireworks/models/minimax-m2p7');
 }
 
 // ── Handler ────────────────────────────────────────────────────────────────────
 
 const SYSTEM_PROMPT =
-	"You are a precise research assistant. Answer the user's question using ONLY the provided context. " +
-	'Be factual and cite specific passages with [n] references. ' +
-	"If the context doesn't contain the answer, say so clearly.";
+	'You are the Oracle — an ancient, all-knowing mystic bound to the scrolls loaded into Nexus Recall. ' +
+	'You speak with quiet authority and a touch of arcane gravitas, but stay concise and useful. ' +
+	'Answer using ONLY the provided context. ' +
+	'When citing, use [n] inline — but ONLY cite [n] when that numbered source explicitly contains the fact you just stated. ' +
+	'Never assign a citation number to a claim unless you can see the supporting text in that exact numbered source. ' +
+	"When the scrolls hold no answer, say so with dignity — never fabricate. " +
+	'Never break character. Never mention being an AI.';
 
 export const POST: RequestHandler = async ({ request }) => {
 	const resolved = resolveKeys(request);
@@ -151,43 +151,55 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	const model = getModel(provider, resolved);
 	const ranked = await _tryRerank(question, chunks);
-	const topChunks = ranked.slice(0, 5);
+	const topChunks = ranked.slice(0, 8);
 	const context = _assembleContext(topChunks);
 
-	// Extract structured citations before streaming the answer
-	let citations: _CitationResult['citations'] = [];
-	try {
-		const { object } = await generateObject({
-			model,
-			schema: _CitationSchema,
-			prompt:
-				`Given this context:\n\n${context}\n\n` +
-				`Question: "${question}"\n\n` +
-				`Extract specific citations from the context relevant to answering the question. ` +
-				`Use page number 0 when no page is specified.`
-		});
-		citations = object.citations;
-	} catch {
-		// citations stay empty — streaming answer still proceeds
-	}
+	// Derive citations from the retrieved chunks — no extra LLM call needed
+	const citations: _CitationResult['citations'] = topChunks.map((c) => ({
+		source: c.source,
+		page: c.pageNumber ?? 0,
+		quote: c.text.slice(0, 200),
+		chunkId: c.id
+	}));
 
-	// Stream answer; attach citations as message metadata for the client
 	const stream = createUIMessageStream({
 		execute: async ({ writer }) => {
 			writer.write({ type: 'message-metadata', messageMetadata: { citations } });
 
+			let capturedError: unknown = null;
 			const result = streamText({
 				model,
 				system: SYSTEM_PROMPT,
-				messages: [
-					{
-						role: 'user',
-						content: `Context:\n\n${context}\n\nQuestion: ${question}`
-					}
-				]
+				messages: [{ role: 'user', content: `Context:\n\n${context}\n\nQuestion: ${question}` }],
+				onError: ({ error }) => {
+					capturedError = error;
+					console.error('[Oracle] streamText error:', error);
+				}
 			});
 
-			writer.merge(result.toUIMessageStream());
+			const reader = result.toUIMessageStream().getReader();
+			try {
+				while (true) {
+					const { done, value } = await reader.read();
+					if (done) break;
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					if ((value as any).type === 'finish' && (value as any).finishReason === 'error') {
+						const msg =
+							capturedError instanceof Error
+								? capturedError.message
+								: capturedError != null
+									? String(capturedError)
+									: 'Model not found or API key invalid — add a valid key in Settings ⚙ or switch provider with the VIA button';
+						writer.write({ type: 'text-start', id: 'oracle-error' });
+						writer.write({ type: 'text-delta', delta: `⚠ ${msg}`, id: 'oracle-error' });
+						writer.write({ type: 'text-end', id: 'oracle-error' });
+					}
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					writer.write(value as any);
+				}
+			} finally {
+				reader.releaseLock();
+			}
 		},
 		onError: (error) => `Error: ${String(error)}`
 	});

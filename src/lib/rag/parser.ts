@@ -15,12 +15,33 @@ export async function parsePdf(file: File): Promise<ParsedPage[]> {
 	for (let i = 1; i <= pdf.numPages; i++) {
 		const page = await pdf.getPage(i);
 		const content = await page.getTextContent();
-		const text = content.items
-			.filter((item): item is TextItem => 'str' in item)
-			.map((item) => item.str)
-			.join(' ')
-			.replace(/\s+/g, ' ')
-			.trim();
+		const items = content.items.filter((item): item is TextItem => 'str' in item);
+
+		// Reconstruct paragraph structure using Y-coordinate gaps between text items.
+		// A significant vertical jump (> ~1.5× the typical line height) signals a new
+		// paragraph, giving the chunker meaningful boundaries to split on.
+		let text = '';
+		for (let k = 0; k < items.length; k++) {
+			const item = items[k];
+			if (k === 0) {
+				text += item.str;
+				continue;
+			}
+			const prev = items[k - 1];
+			const yGap = Math.abs(item.transform[5] - prev.transform[5]);
+			const lineHeight = Math.abs(item.transform[3]) || 12; // font size fallback
+			if (yGap > lineHeight * 1.2) {
+				// New paragraph
+				text += '\n\n' + item.str;
+			} else if (item.str && !prev.str.endsWith('-')) {
+				// Same line or soft wrap — add space unless previous word was hyphenated
+				text += ' ' + item.str;
+			} else {
+				// De-hyphenate
+				text = text.slice(0, -1) + item.str;
+			}
+		}
+		text = text.replace(/ {2,}/g, ' ').trim();
 		if (text) pages.push({ text, pageNumber: i, source: file.name });
 	}
 	return pages;

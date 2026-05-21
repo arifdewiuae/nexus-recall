@@ -8,10 +8,12 @@
 		source: string;
 		chunks: Chunk[];
 		focusedPage?: number | null;
+		focusedQuote?: string | null;
+		focusedChunkId?: string | null;
 		focusNonce?: number;
 	}
 
-	let { source, chunks, focusedPage = null, focusNonce = 0 }: Props = $props();
+	let { source, chunks, focusedPage = null, focusedQuote = null, focusedChunkId = null, focusNonce = 0 }: Props = $props();
 
 	const isPdf = $derived(source.toLowerCase().endsWith('.pdf'));
 
@@ -35,38 +37,108 @@
 		return 'hl-3';
 	}
 
-	const mdHtml = $derived.by(() => {
-		if (isPdf) return '';
-		// Reconstruct full doc, de-duplicating overlapping chunk boundaries
-		let full = '';
+	// Render each chunk separately so we can attach data-chunk-id for direct lookup.
+	// Overlap dedup is applied at the text level before rendering each chunk.
+	const mdChunks = $derived.by(() => {
+		if (isPdf) return [] as Array<{ id: string; html: string }>;
+		const results: Array<{ id: string; html: string }> = [];
+		let prevText = '';
 		for (const c of sorted) {
-			if (!full) {
-				full = c.text;
-				continue;
-			}
-			const maxOverlap = Math.min(full.length, c.text.length, 300);
+			const maxOverlap = Math.min(prevText.length, c.text.length, 300);
 			let overlap = 0;
-			for (let len = maxOverlap; len > 20; len--) {
-				if (full.endsWith(c.text.slice(0, len))) {
+			for (let len = maxOverlap; len > 4; len--) {
+				if (prevText.endsWith(c.text.slice(0, len))) {
 					overlap = len;
 					break;
 				}
 			}
-			full += '\n\n' + c.text.slice(overlap);
+			const text = c.text.slice(overlap);
+			prevText = c.text;
+			if (text.trim()) {
+				results.push({ id: c.id, html: marked.parse(text) as string });
+			}
 		}
-		return marked.parse(full) as string;
+		return results;
 	});
 
 	let parchmentEl = $state<HTMLDivElement | null>(null);
+	// Plain variable — not reactive, so changing it doesn't re-trigger the effect
+	let highlightedEl: Element | null = null;
+
+	function findQuoteEl(root: HTMLElement, quote: string): Element | null {
+		// Normalize: strip markdown syntax + typographic special chars, collapse whitespace
+		function norm(s: string) {
+			return s
+				.replace(/[#*_`\[\]>~|—–·]/g, ' ')
+				.replace(/\s+/g, ' ')
+				.trim()
+				.toLowerCase();
+		}
+		// Split by lines so a multi-paragraph chunk doesn't force a cross-element match
+		const candidates = quote
+			.split('\n')
+			.map((l) => norm(l).replace(/^\d+\.\s+/, '').replace(/^[-•]\s+/, ''))
+			.filter((l) => l.length >= 15);
+
+		if (candidates.length === 0) return null;
+
+		// Prefer content-level elements — heading lines in chunk text should not
+		// shadow the actual paragraph that carries the cited content.
+		const contentBlocks = root.querySelectorAll<HTMLElement>('p, li, blockquote, td, pre');
+		for (const line of candidates) {
+			const needle = line.slice(0, 50);
+			for (const el of contentBlocks) {
+				if (norm(el.textContent ?? '').includes(needle)) return el;
+			}
+		}
+		// Fall back to headings only if no paragraph-level match was found
+		const headings = root.querySelectorAll<HTMLElement>('h1, h2, h3, h4');
+		for (const line of candidates) {
+			const needle = line.slice(0, 50);
+			for (const el of headings) {
+				if (norm(el.textContent ?? '').includes(needle)) return el;
+			}
+		}
+		return null;
+	}
 
 	$effect(() => {
 		void focusNonce;
-		if (focusedPage == null || !parchmentEl) return;
+		if (!parchmentEl) return;
+
+		// Clear previous highlight before applying a new one
+		if (highlightedEl) {
+			highlightedEl.classList.remove('quote-highlight');
+			highlightedEl = null;
+		}
+
+		if (!isPdf) {
+			// 1. Prefer direct chunk ID lookup — exact, zero ambiguity
+			if (focusedChunkId) {
+				const el = parchmentEl.querySelector<HTMLElement>(`[data-chunk-id="${focusedChunkId}"]`);
+				if (el) {
+					el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+					el.classList.add('quote-highlight');
+					highlightedEl = el;
+					return;
+				}
+			}
+			// 2. Fall back to fuzzy text search (e.g. citations from older messages)
+			if (focusedQuote) {
+				const el = findQuoteEl(parchmentEl, focusedQuote);
+				if (el) {
+					el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+					el.classList.add('quote-highlight');
+					highlightedEl = el;
+					return;
+				}
+			}
+		}
+
+		if (focusedPage == null) return;
 		const target = parchmentEl.querySelector<HTMLElement>(`[data-page="${focusedPage}"]`);
 		if (target) {
 			target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-		} else {
-			parchmentEl.scrollTo({ top: 0, behavior: 'smooth' });
 		}
 	});
 </script>
@@ -86,8 +158,12 @@
 			{/each}
 		{/each}
 	{:else}
-		<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-		<div class="md-body">{@html mdHtml}</div>
+		<div class="md-body">
+			{#each mdChunks as chunk (chunk.id)}
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+				<div data-chunk-id={chunk.id}>{@html chunk.html}</div>
+			{/each}
+		</div>
 	{/if}
 </div>
 
@@ -209,5 +285,19 @@
 		color: var(--bg-deep);
 		padding: 1px 2px;
 		opacity: 0.45;
+	}
+
+	@keyframes cite-flash {
+		0%   { outline-color: var(--accent); background: color-mix(in srgb, var(--accent) 30%, transparent); }
+		60%  { outline-color: var(--accent); background: color-mix(in srgb, var(--accent) 30%, transparent); }
+		100% { outline-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+	}
+
+	/* Applied to the block element that contains the cited quote */
+	:global(.quote-highlight) {
+		outline: 2px solid var(--accent) !important;
+		outline-offset: 4px;
+		border-radius: 1px;
+		animation: cite-flash 0.9s ease forwards;
 	}
 </style>

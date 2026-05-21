@@ -719,12 +719,39 @@ textarea {
 	border: none;
 }
 .cite.tier-2 {
-	color: var(--crimson);
-	box-shadow: 0 0 0 2px var(--crimson);
+	color: var(--accent-dim);
+	box-shadow: 0 0 0 2px var(--accent-dim);
+	opacity: 0.8;
 }
 .cite:hover {
 	background: var(--bg-elev);
 }
+
+.cite-inline {
+	display: inline;
+	background: none;
+	border: none;
+	color: var(--accent);
+	font-family: 'Press Start 2P', monospace;
+	font-size: 8px;
+	cursor: pointer;
+	padding: 0 1px;
+	vertical-align: super;
+	line-height: 1;
+}
+.cite-inline:hover { text-decoration: underline; }
+
+.oracle-md p { margin: 0 0 10px; }
+.oracle-md p:last-child { margin-bottom: 0; }
+.oracle-md strong { color: var(--parchment-ink-strong, var(--text)); font-weight: 700; }
+.oracle-md em { font-style: italic; opacity: 0.85; }
+.oracle-md ul, .oracle-md ol { margin: 0 0 10px; padding-left: 18px; }
+.oracle-md li { margin-bottom: 4px; }
+.oracle-md code { background: var(--bg-deep); color: var(--accent); padding: 1px 5px; font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+.oracle-md h1, .oracle-md h2, .oracle-md h3 { font-family: 'Press Start 2P', monospace; color: var(--accent); margin: 12px 0 6px; line-height: 1.6; }
+.oracle-md h1 { font-size: 11px; }
+.oracle-md h2 { font-size: 9px; }
+.oracle-md h3 { font-size: 8px; }
 
 .typewriter::after {
 	content: '';

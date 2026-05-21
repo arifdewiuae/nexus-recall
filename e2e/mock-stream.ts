@@ -22,4 +22,5 @@ export interface MockCitation {
 	source: string;
 	page: number;
 	quote: string;
+	chunkId?: string;
 }

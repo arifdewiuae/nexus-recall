@@ -59,7 +59,7 @@ test.describe('Nexus Recall — Golden Path', () => {
 
 		// Document viewer renders text and markdown is parsed to HTML (not raw)
 		await expect(page.locator('.parchment')).toContainText('Alchemist');
-		await expect(page.locator('.md-body h1, .md-body h2')).toBeVisible();
+		await expect(page.locator('.md-body h1, .md-body h2').first()).toBeVisible();
 		await expect(page.locator('.parchment')).not.toContainText('## ');
 	});
 
@@ -76,7 +76,7 @@ test.describe('Nexus Recall — Golden Path', () => {
 		await waitForReady(page);
 
 		// Markdown headings rendered as HTML
-		await expect(page.locator('.md-body h1, .md-body h2')).toBeVisible();
+		await expect(page.locator('.md-body h1, .md-body h2').first()).toBeVisible();
 		await expect(page.locator('.md-body')).toContainText('Retrieval-Augmented Generation');
 	});
 
@@ -96,6 +96,26 @@ test.describe('Nexus Recall — Golden Path', () => {
 			"Philosopher's Stone",
 			{ timeout: 15_000 }
 		);
+	});
+
+	test('oracle renders markdown as HTML (not raw text)', async ({ page }) => {
+		await page.goto('/');
+		await uploadFixture(page);
+		await waitForReady(page);
+
+		await mockChatApi(page, 'The **Philosopher\'s Stone** enables *transmutation* of lead into gold.');
+
+		const input = page.getByLabel('Ask the Oracle');
+		await input.fill("What is the Philosopher's Stone?");
+		await input.press('Enter');
+
+		const oracleBubble = page.locator('.bubble').filter({ hasText: 'ORACLE' });
+		await expect(oracleBubble).toBeVisible({ timeout: 15_000 });
+
+		// Bold/italic rendered as HTML — raw markdown delimiters must not appear
+		await expect(oracleBubble.locator('strong')).toBeVisible();
+		await expect(oracleBubble).not.toContainText('**');
+		await expect(oracleBubble).not.toContainText('*transmutation*');
 	});
 
 	test('citation chip scrolls the document viewer', async ({ page }) => {
@@ -121,8 +141,7 @@ test.describe('Nexus Recall — Golden Path', () => {
 
 		await citationBtn.click();
 
-		// For a markdown doc (no pages), clicking scrolls to top — parchment stays at 0
-		// The important thing is no error was thrown and the click was processed
+		// Click is processed without errors — scroll position stays >= 0
 		const scrollAfter = await page.locator('.parchment').evaluate((el) => el.scrollTop);
 		expect(scrollAfter).toBeGreaterThanOrEqual(scrollBefore);
 	});

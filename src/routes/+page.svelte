@@ -54,16 +54,21 @@
 
 	// Citation focus
 	let focusedPage = $state<number | null>(null);
+	let focusedQuote = $state<string | null>(null);
+	let focusedChunkId = $state<string | null>(null);
 	let focusNonce = $state(0);
 
 	interface Citation {
 		source: string;
 		page: number;
 		quote: string;
+		chunkId?: string;
 	}
 
 	function handleCiteClick(cite: Citation) {
 		focusedPage = cite.page;
+		focusedQuote = cite.quote;
+		focusedChunkId = cite.chunkId ?? null;
 		focusNonce += 1;
 	}
 
@@ -320,6 +325,8 @@
 									source={activeSource}
 									chunks={activeChunks}
 									{focusedPage}
+									{focusedQuote}
+									{focusedChunkId}
 									{focusNonce}
 								/>
 							</div>

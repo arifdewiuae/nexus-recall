@@ -1,6 +1,9 @@
 <script lang="ts">
+	import { onMount, tick } from 'svelte';
 	import { Chat } from '@ai-sdk/svelte';
 	import { DefaultChatTransport } from 'ai';
+	import type { UIMessage } from 'ai';
+	import { marked } from 'marked';
 	import { embedText, loadModel } from '$lib/rag/embeddings';
 	import { similaritySearch } from '$lib/rag/vector-store';
 	import { readyCount, hitChunks } from '$lib/stores/ingestion';
@@ -9,10 +12,13 @@
 	import Sprite from './Sprite.svelte';
 	import PixelIcon from './PixelIcon.svelte';
 
+	const STORAGE_KEY = 'nexus-recall:chat';
+
 	interface Citation {
 		source: string;
 		page: number;
 		quote: string;
+		chunkId?: string;
 	}
 
 	interface Props {
@@ -27,10 +33,39 @@
 
 	const chat = new Chat({ transport: new DefaultChatTransport({ api: '/api/chat' }) });
 
+	onMount(() => {
+		try {
+			const stored = localStorage.getItem(STORAGE_KEY);
+			if (stored) {
+				const parsed = JSON.parse(stored) as UIMessage[];
+				chat.messages = parsed.filter(
+					(m) => m.role !== 'assistant' || m.parts.some((p) => p.type === 'text' && p.text.trim())
+				);
+			}
+		} catch {
+			// ignore parse errors
+		}
+	});
+
+	$effect(() => {
+		const msgs = chat.messages.filter(
+			(m) => m.role !== 'assistant' || m.parts.some((p) => p.type === 'text' && p.text.trim())
+		);
+		try {
+			if (msgs.length === 0) {
+				localStorage.removeItem(STORAGE_KEY);
+			} else {
+				localStorage.setItem(STORAGE_KEY, JSON.stringify(msgs));
+			}
+		} catch {
+			// ignore storage errors
+		}
+	});
+
 	let inputValue = $state('');
 	let isSearching = $state(false);
 	let searchError = $state('');
-	let messagesEnd = $state<HTMLDivElement | null>(null);
+	let oracleBodyEl = $state<HTMLDivElement | null>(null);
 	let inputEl = $state<HTMLInputElement | null>(null);
 
 	const isBusy = $derived(
@@ -50,9 +85,11 @@
 	);
 
 	$effect(() => {
-		// scroll to bottom when messages update
 		void chat.messages;
-		messagesEnd?.scrollIntoView({ behavior: 'smooth' });
+		void chat.status; // also fires on each streaming state change
+		tick().then(() => {
+			if (oracleBodyEl) oracleBodyEl.scrollTop = oracleBodyEl.scrollHeight;
+		});
 	});
 
 	async function handleSubmit() {
@@ -102,6 +139,7 @@
 	function clearChat() {
 		chat.messages = [];
 		searchError = '';
+		try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
 	}
 
 	function getCitations(msg: (typeof chat.messages)[0]): Citation[] {
@@ -114,6 +152,24 @@
 			.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
 			.map((p) => p.text)
 			.join('');
+	}
+
+	function renderOracleHtml(text: string, citations: Citation[]): string {
+		const html = marked.parse(text) as string;
+		return html.replace(/\[(\d+)\]/g, (match, n) => {
+			const idx = parseInt(n) - 1;
+			if (idx >= 0 && idx < citations.length) {
+				return `<button class="cite-inline" data-ref="${idx}">[${n}]</button>`;
+			}
+			return match;
+		});
+	}
+
+	function handleOracleMdClick(e: MouseEvent, citations: Citation[]) {
+		const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button.cite-inline');
+		if (!btn) return;
+		const idx = parseInt(btn.dataset.ref ?? '');
+		if (!isNaN(idx) && citations[idx]) onCiteClick?.(citations[idx]);
 	}
 </script>
 
@@ -138,7 +194,7 @@
 		style="font-size:7px;padding:5px 8px"
 	>
 		<span class="chip-dim">VIA</span>
-		<span class="chip-accent">{provider === 'anthropic' ? 'CLAUDE' : 'LLAMA'}</span>
+		<span class="chip-accent">{provider === 'anthropic' ? 'CLAUDE' : 'MINIMAX'}</span>
 	</button>
 	<div class="oracle-meta">{statusLabel}</div>
 	{#if chat.messages.length > 0}
@@ -154,7 +210,7 @@
 </div>
 
 <!-- Body -->
-<div class="oracle-body" role="log" aria-live="polite" aria-label="Oracle conversation">
+<div class="oracle-body" bind:this={oracleBodyEl} role="log" aria-live="polite" aria-label="Oracle conversation">
 	{#if chat.messages.length === 0 && !isBusy}
 		<div class="oracle-empty">
 			<div class="wiz-bob">
@@ -182,14 +238,16 @@
 				{@const text = getTextContent(message)}
 				{@const citations = getCitations(message)}
 				{@const isLastStreaming = isBusy && message === chat.lastMessage}
+				{#if text.trim() || isLastStreaming}
 				<div class="message">
 					<div class="portrait">
 						<Sprite name="wizard" scale={2} />
 					</div>
 					<div class="bubble">
 						<div class="bubble-name">ORACLE</div>
-						<span class:typewriter={isLastStreaming}>{text}</span>
-						{#if citations.length > 0}
+						<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+						<div class="oracle-md" class:typewriter={isLastStreaming} onclick={(e) => handleOracleMdClick(e, citations)} role="article">{@html renderOracleHtml(text, citations)}</div>
+						{#if citations.length > 0 && text.trim()}
 							<div class="citations">
 								{#each citations as cite, i (i)}
 									<button
@@ -208,8 +266,9 @@
 						{/if}
 					</div>
 				</div>
+				{/if}
 			{/if}
-		{/each}
+			{/each}
 
 		{#if chat.status === 'submitted'}
 			<div class="message">
@@ -231,7 +290,6 @@
 			</div>
 		{/if}
 
-		<div bind:this={messagesEnd}></div>
 	{/if}
 </div>
 
