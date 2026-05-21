@@ -172,6 +172,13 @@
 			.join('');
 	}
 
+	function getReasoningContent(msg: (typeof chat.messages)[0]): string {
+		return msg.parts
+			.filter((p): p is { type: 'reasoning'; text: string } => p.type === 'reasoning')
+			.map((p) => p.text)
+			.join('');
+	}
+
 	function renderOracleHtml(text: string, citations: Citation[]): string {
 		const html = marked.parse(text) as string;
 		return html.replace(/\[(\d+)\]/g, (match, n) => {
@@ -270,7 +277,11 @@
 						<div class="bubble">
 							<div class="bubble-name">ORACLE</div>
 							{#if isLastStreaming && !text.trim()}
+								{@const reasoning = getReasoningContent(message)}
 								<span class="thinking-hint">PONDERING THE SCROLLS</span><span class="typewriter" style="color:var(--text-dim)"></span>
+								{#if reasoning}
+									<div class="reasoning-block">{reasoning}</div>
+								{/if}
 							{:else}
 							<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 							<div
