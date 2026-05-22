@@ -292,6 +292,14 @@
 									<div class="reasoning-body reasoning-live">{reasoning}</div>
 								{/if}
 							{:else}
+							<!--
+								The wrapper is non-interactive on purpose — it only delegates
+								clicks to the real <button data-cite> elements rendered inside
+								{@html}. Keyboard users activate those buttons directly, so the
+								wrapper does not need its own key handler.
+							-->
+							<!-- svelte-ignore a11y_click_events_have_key_events -->
+							<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 							<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 							<div
 								class="oracle-md"
