@@ -89,7 +89,7 @@ function getModel(provider: string = 'fireworks', keys: ResolvedKeys) {
 		baseURL: 'https://api.fireworks.ai/inference/v1',
 		apiKey: keys.fireworksKey
 	});
-	return fireworks('accounts/fireworks/models/minimax-m2p7');
+	return fireworks('accounts/fireworks/models/deepseek-v4-flash');
 }
 
 // ── Handler ────────────────────────────────────────────────────────────────────
@@ -127,7 +127,6 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 
 	const model = getModel(provider, resolved);
-	const isFireworks = provider !== 'anthropic';
 	const ranked = await tryRerank(question, chunks);
 	const topChunks = ranked.slice(0, 8);
 	const context = _assembleContext(topChunks);
@@ -150,13 +149,6 @@ export const POST: RequestHandler = async ({ request }) => {
 				system: SYSTEM_PROMPT,
 				messages: [{ role: 'user', content: `Context:\n\n${context}\n\nQuestion: ${question}` }],
 				maxOutputTokens: 1024,
-				// MiniMax M2 has reasoning always-on; without this it defaults to
-				// 'medium' effort and spends minutes thinking before any text token,
-				// which makes the stream look frozen client-side. `forceReasoning`
-				// makes @ai-sdk/openai forward the param for non-allowlisted IDs.
-				providerOptions: isFireworks
-					? { openai: { reasoningEffort: 'low', forceReasoning: true } }
-					: undefined,
 				onError: ({ error }) => {
 					capturedError = error;
 					console.error('[Oracle] streamText error:', error);

@@ -218,7 +218,7 @@
 		style="font-size:7px;padding:5px 8px"
 	>
 		<span class="chip-dim">VIA</span>
-		<span class="chip-accent">{provider === 'anthropic' ? 'CLAUDE' : 'MINIMAX'}</span>
+		<span class="chip-accent">{provider === 'anthropic' ? 'CLAUDE' : 'DEEPSEEK'}</span>
 	</button>
 	<button
 		class="chip chip-btn"
@@ -340,7 +340,7 @@
 				<div class="bubble">
 					<div class="bubble-name">ORACLE</div>
 					<span class="thinking-hint">
-						{provider === 'anthropic' ? 'CLAUDE' : 'MINIMAX'} IS CONSULTING THE SCROLLS
+						{provider === 'anthropic' ? 'CLAUDE' : 'DEEPSEEK'} IS CONSULTING THE SCROLLS
 					</span><span class="typewriter" style="color:var(--text-dim)"></span>
 				</div>
 			</div>
