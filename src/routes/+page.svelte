@@ -31,6 +31,8 @@
 	let settingsOpen = $state(false);
 	let fileInputEl = $state<HTMLInputElement | null>(null);
 	let activeSource = $state<string | null>(null);
+	// Mobile tab switcher: 'tome' | 'oracle'
+	let mobileTab = $state<'tome' | 'oracle'>('tome');
 	// Drag-to-resize
 	let tomeWidth = $state<number | null>(null);
 
@@ -204,8 +206,31 @@
 		</button>
 	</div>
 
+	<!-- Mobile pane switcher (visible only ≤820px via CSS) -->
+	<div class="mobile-tabs" role="tablist" aria-label="Switch pane">
+		<button
+			class="mobile-tab"
+			class:active={mobileTab === 'tome'}
+			role="tab"
+			aria-selected={mobileTab === 'tome'}
+			onclick={() => (mobileTab = 'tome')}
+		>
+			<PixelIcon name="sword" size={10} /> TOME
+			{#if $readyCount > 0}<span class="mt-count">{$readyCount}</span>{/if}
+		</button>
+		<button
+			class="mobile-tab"
+			class:active={mobileTab === 'oracle'}
+			role="tab"
+			aria-selected={mobileTab === 'oracle'}
+			onclick={() => (mobileTab = 'oracle')}
+		>
+			<PixelIcon name="arrow" size={10} /> ORACLE
+		</button>
+	</div>
+
 	<!-- Main split pane -->
-	<div class="main">
+	<div class="main" data-mobile-tab={mobileTab}>
 		<!-- Tome (left pane) -->
 		<div class="tome" style={tomeWidth ? `flex:none;width:${tomeWidth}px` : ''}>
 			{#if $documents.length === 0}
