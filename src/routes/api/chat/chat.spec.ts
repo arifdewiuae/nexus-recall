@@ -1,8 +1,18 @@
-import { describe, it, expect } from 'vitest';
-import { _assembleContext, _CitationSchema, _tryRerank } from './+server';
-import type { _ChunkRecord } from './+server';
+import { describe, it, expect, vi } from 'vitest';
 
-type ChunkRecord = _ChunkRecord;
+import { assembleContext, buildCitations } from './chat.context';
+import { ChatRequestSchema } from './chat.schema';
+import { interceptReasoning } from './chat.stream';
+import { createLogger } from './chat.logger';
+import type { ChunkRecord, Citation } from './chat.schema';
+
+// ── Mock reranker so tests never try to download the cross-encoder model ───────
+
+vi.mock('$lib/server/reranker', () => ({
+	tryRerank: vi.fn(async (_q: string, candidates: unknown[]) => candidates)
+}));
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
 function makeChunk(overrides: Partial<ChunkRecord> & { text: string }): ChunkRecord {
 	return {
@@ -14,13 +24,15 @@ function makeChunk(overrides: Partial<ChunkRecord> & { text: string }): ChunkRec
 	};
 }
 
-describe('_assembleContext', () => {
+// ── assembleContext ────────────────────────────────────────────────────────────
+
+describe('assembleContext', () => {
 	it('numbers chunks and includes source', () => {
 		const chunks: ChunkRecord[] = [
 			makeChunk({ source: 'a.pdf', text: 'alpha' }),
 			makeChunk({ source: 'b.pdf', text: 'beta' })
 		];
-		const ctx = _assembleContext(chunks);
+		const ctx = assembleContext(chunks);
 		expect(ctx).toContain('[1]');
 		expect(ctx).toContain('[2]');
 		expect(ctx).toContain('Source: a.pdf');
@@ -30,66 +42,222 @@ describe('_assembleContext', () => {
 
 	it('includes page number when present', () => {
 		const chunks = [makeChunk({ source: 'x.pdf', pageNumber: 7, text: 'hello' })];
-		expect(_assembleContext(chunks)).toContain('page 7');
+		expect(assembleContext(chunks)).toContain('page 7');
 	});
 
 	it('omits page when absent', () => {
 		const chunks = [makeChunk({ source: 'x.pdf', text: 'hello' })];
-		expect(_assembleContext(chunks)).not.toContain('page');
+		expect(assembleContext(chunks)).not.toContain('page');
 	});
 
 	it('separates chunks with dividers', () => {
 		const chunks = [makeChunk({ text: 'a' }), makeChunk({ text: 'b' })];
-		expect(_assembleContext(chunks)).toContain('---');
+		expect(assembleContext(chunks)).toContain('---');
 	});
 });
 
-describe('_CitationSchema', () => {
-	it('accepts valid citations', () => {
-		const result = _CitationSchema.safeParse({
-			citations: [{ source: 'doc.pdf', page: 3, quote: 'some quote' }]
+// ── buildCitations ─────────────────────────────────────────────────────────────
+
+describe('buildCitations', () => {
+	it('maps source, page, and chunkId from chunk', () => {
+		const chunk = makeChunk({ source: 'report.pdf', pageNumber: 3, text: 'some text' });
+		const [citation] = buildCitations([chunk]);
+		expect(citation?.source).toBe('report.pdf');
+		expect(citation?.page).toBe(3);
+		expect(citation?.chunkId).toBe(chunk.id);
+	});
+
+	it('defaults page to 0 when pageNumber is absent', () => {
+		const [citation] = buildCitations([makeChunk({ text: 'text' })]);
+		expect(citation?.page).toBe(0);
+	});
+
+	it('truncates quote to 200 chars', () => {
+		const longText = 'x'.repeat(300);
+		const [citation] = buildCitations([makeChunk({ text: longText })]);
+		expect(citation?.quote).toHaveLength(200);
+	});
+
+	it('preserves quote when text is shorter than 200 chars', () => {
+		const chunk = makeChunk({ text: 'short' });
+		const [citation] = buildCitations([chunk]);
+		expect(citation?.quote).toBe('short');
+	});
+});
+
+// ── ChatRequestSchema ──────────────────────────────────────────────────────────
+
+describe('ChatRequestSchema', () => {
+	const validChunk = {
+		id: 'c1',
+		source: 'a.pdf',
+		chunkIndex: 0,
+		text: 'hello',
+		vector: [1, 0]
+	};
+
+	it('accepts a valid request', () => {
+		const result = ChatRequestSchema.safeParse({
+			question: 'What is this?',
+			chunks: [validChunk]
 		});
 		expect(result.success).toBe(true);
 	});
 
-	it('accepts empty citations array', () => {
-		expect(_CitationSchema.safeParse({ citations: [] }).success).toBe(true);
+	it('rejects empty question', () => {
+		expect(ChatRequestSchema.safeParse({ question: '', chunks: [validChunk] }).success).toBe(false);
 	});
 
-	it('rejects missing source', () => {
-		const result = _CitationSchema.safeParse({
-			citations: [{ page: 1, quote: 'text' }]
-		});
-		expect(result.success).toBe(false);
+	it('rejects missing question', () => {
+		expect(ChatRequestSchema.safeParse({ chunks: [validChunk] }).success).toBe(false);
 	});
 
-	it('rejects quote exceeding 200 chars', () => {
-		const result = _CitationSchema.safeParse({
-			citations: [{ source: 'a.pdf', page: 1, quote: 'x'.repeat(201) }]
-		});
-		expect(result.success).toBe(false);
+	it('rejects empty chunks array', () => {
+		expect(ChatRequestSchema.safeParse({ question: 'hi', chunks: [] }).success).toBe(false);
+	});
+
+	it('rejects unknown provider', () => {
+		expect(
+			ChatRequestSchema.safeParse({
+				question: 'hi',
+				chunks: [validChunk],
+				provider: 'openai'
+			}).success
+		).toBe(false);
+	});
+
+	it('accepts optional known providers', () => {
+		for (const provider of ['fireworks', 'anthropic'] as const) {
+			expect(
+				ChatRequestSchema.safeParse({ question: 'hi', chunks: [validChunk], provider }).success
+			).toBe(true);
+		}
+	});
+
+	it('rejects chunks array exceeding MAX_CHUNKS', () => {
+		const tooMany = Array.from({ length: 201 }, (_, i) => ({
+			...validChunk,
+			id: `c${i}`
+		}));
+		expect(ChatRequestSchema.safeParse({ question: 'hi', chunks: tooMany }).success).toBe(false);
 	});
 });
 
-describe('_tryRerank', () => {
-	it('returns original order when only one chunk', async () => {
-		const chunks = [makeChunk({ text: 'only one' })];
-		const result = await _tryRerank('question', chunks);
-		expect(result).toHaveLength(1);
-		expect(result[0].text).toBe('only one');
+// ── interceptReasoning ────────────────────────────────────────────────────────
+
+describe('interceptReasoning', () => {
+	/** Build a fake ReadableStream from an array of chunks. */
+	function makeStream(chunks: unknown[]): ReadableStream<unknown> {
+		let index = 0;
+		return new ReadableStream({
+			pull(controller) {
+				if (index < chunks.length) {
+					controller.enqueue(chunks[index++]);
+				} else {
+					controller.close();
+				}
+			}
+		});
+	}
+
+	/** Collect all write calls on a fake writer. */
+	function makeWriter() {
+		const calls: Array<{ type: string } & Record<string, unknown>> = [];
+		return {
+			writer: {
+				write(chunk: { type: string } & Record<string, unknown>) {
+					calls.push(chunk);
+				}
+			},
+			calls
+		};
+	}
+
+	const citations: Citation[] = [{ source: 'a.pdf', page: 1, quote: 'q', chunkId: 'c1' }];
+	const log = createLogger('test-req-id');
+
+	it('writes initial message-metadata with citations', async () => {
+		const { writer, calls } = makeWriter();
+		await interceptReasoning({
+			writer,
+			citations,
+			log,
+			result: { toUIMessageStream: () => makeStream([]) }
+		});
+		expect(calls[0]).toMatchObject({ type: 'message-metadata' });
+		expect((calls[0]?.['messageMetadata'] as { citations: unknown })?.citations).toBe(citations);
 	});
 
-	it('falls back gracefully when reranker unavailable', async () => {
-		const chunks: ChunkRecord[] = [
-			makeChunk({ id: 'a', text: 'first' }),
-			makeChunk({ id: 'b', text: 'second' })
-		];
-		// In test env the cross-encoder model won't download — expects fallback
-		const result = await _tryRerank('test question', chunks);
-		expect(result).toHaveLength(2);
-		// All original chunks present
-		const ids = result.map((c) => c.id);
-		expect(ids).toContain('a');
-		expect(ids).toContain('b');
+	it('buffers reasoning-delta and flushes every 6 tokens', async () => {
+		const deltas = Array.from({ length: 12 }, (_, i) => ({
+			type: 'reasoning-delta',
+			delta: `t${i}`
+		}));
+		const { writer, calls } = makeWriter();
+		await interceptReasoning({
+			writer,
+			citations,
+			log,
+			result: { toUIMessageStream: () => makeStream(deltas) }
+		});
+		// 12 deltas → 2 flushes at positions 6 and 12, plus the initial metadata write
+		const metadataCalls = calls.filter((c) => c['type'] === 'message-metadata');
+		expect(metadataCalls.length).toBeGreaterThanOrEqual(3); // initial + 2 flushes
+	});
+
+	it('flushes remaining reasoning on reasoning-end', async () => {
+		const chunks = [{ type: 'reasoning-delta', delta: 'partial' }, { type: 'reasoning-end' }];
+		const { writer, calls } = makeWriter();
+		await interceptReasoning({
+			writer,
+			citations,
+			log,
+			result: { toUIMessageStream: () => makeStream(chunks) }
+		});
+		const withReasoning = calls.filter(
+			(c) =>
+				c['type'] === 'message-metadata' &&
+				(c['messageMetadata'] as Record<string, unknown>)?.['reasoning'] != null
+		);
+		expect(withReasoning.length).toBeGreaterThanOrEqual(1);
+	});
+
+	it('does not forward reasoning-delta or reasoning-end chunks to writer', async () => {
+		const chunks = [{ type: 'reasoning-delta', delta: 'a' }, { type: 'reasoning-end' }];
+		const { writer, calls } = makeWriter();
+		await interceptReasoning({
+			writer,
+			citations,
+			log,
+			result: { toUIMessageStream: () => makeStream(chunks) }
+		});
+		expect(calls.some((c) => c['type'] === 'reasoning-delta')).toBe(false);
+		expect(calls.some((c) => c['type'] === 'reasoning-end')).toBe(false);
+	});
+
+	it('emits error text and forwards finish chunk on finish+error', async () => {
+		const chunks = [{ type: 'finish', finishReason: 'error' }];
+		const { writer, calls } = makeWriter();
+		await interceptReasoning({
+			writer,
+			citations,
+			log,
+			result: { toUIMessageStream: () => makeStream(chunks) }
+		});
+		expect(calls.some((c) => c['type'] === 'text-start' && c['id'] === 'oracle-error')).toBe(true);
+		expect(calls.some((c) => c['type'] === 'text-delta')).toBe(true);
+		expect(calls.some((c) => c['type'] === 'finish')).toBe(true); // finish forwarded
+	});
+
+	it('forwards non-reasoning chunks unchanged', async () => {
+		const chunks = [{ type: 'text-delta', delta: 'hello', id: 'msg-1' }];
+		const { writer, calls } = makeWriter();
+		await interceptReasoning({
+			writer,
+			citations,
+			log,
+			result: { toUIMessageStream: () => makeStream(chunks) }
+		});
+		expect(calls.some((c) => c['type'] === 'text-delta' && c['delta'] === 'hello')).toBe(true);
 	});
 });
