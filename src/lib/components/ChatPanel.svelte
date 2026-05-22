@@ -228,7 +228,9 @@
 		style="font-size:7px;padding:5px 8px"
 	>
 		<span class="chip-dim">THINK</span>
-		<span class="chip-accent" style={$showReasoning ? '' : 'opacity:0.4'}>{$showReasoning ? 'ON' : 'OFF'}</span>
+		<span class="chip-accent" style={$showReasoning ? '' : 'opacity:0.4'}
+			>{$showReasoning ? 'ON' : 'OFF'}</span
+		>
 	</button>
 	<div class="oracle-meta">{statusLabel}</div>
 	{#if chat.messages.length > 0}
@@ -287,29 +289,32 @@
 						<div class="bubble">
 							<div class="bubble-name">ORACLE</div>
 							{#if isLastStreaming && !text.trim()}
-								<span class="thinking-hint">PONDERING THE SCROLLS</span><span class="typewriter" style="color:var(--text-dim)"></span>
+								<span class="thinking-hint">PONDERING THE SCROLLS</span><span
+									class="typewriter"
+									style="color:var(--text-dim)"
+								></span>
 								{#if reasoning && $showReasoning}
 									<div class="reasoning-body reasoning-live">{reasoning}</div>
 								{/if}
 							{:else}
-							<!--
+								<!--
 								The wrapper is non-interactive on purpose — it only delegates
 								clicks to the real <button data-cite> elements rendered inside
 								{@html}. Keyboard users activate those buttons directly, so the
 								wrapper does not need its own key handler.
 							-->
-							<!-- svelte-ignore a11y_click_events_have_key_events -->
-							<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-							<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-							<div
-								class="oracle-md"
-								class:typewriter={isLastStreaming}
-								onclick={(e) => handleOracleMdClick(e, citations)}
-								role="article"
-							>
+								<!-- svelte-ignore a11y_click_events_have_key_events -->
+								<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 								<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-								{@html renderOracleHtml(text, citations)}
-							</div>
+								<div
+									class="oracle-md"
+									class:typewriter={isLastStreaming}
+									onclick={(e) => handleOracleMdClick(e, citations)}
+									role="article"
+								>
+									<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+									{@html renderOracleHtml(text, citations)}
+								</div>
 							{/if}
 							{#if citations.length > 0 && text.trim()}
 								<div class="citations">
