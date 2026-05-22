@@ -7,8 +7,12 @@ export interface RerankCandidate {
 	[key: string]: unknown;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _pipeline: any = null;
+// Shape of the cross-encoder text-classification pipeline used here:
+// it accepts a batch of {text, text_pair} inputs and returns per-input scores.
+type RerankInput = { text: string; text_pair: string };
+type RerankPipeline = (inputs: RerankInput[]) => Promise<Array<{ score: number; label?: string }>>;
+
+let _pipeline: RerankPipeline | null = null;
 let _initPromise: Promise<void> | null = null;
 
 /**
@@ -22,7 +26,8 @@ export async function initReranker(): Promise<void> {
 	_initPromise = (async () => {
 		const { pipeline, env } = await import('@xenova/transformers');
 		env.allowLocalModels = false;
-		_pipeline = await pipeline('text-classification', 'cross-encoder/ms-marco-MiniLM-L-6-v2');
+		const p = await pipeline('text-classification', 'cross-encoder/ms-marco-MiniLM-L-6-v2');
+		_pipeline = p as unknown as RerankPipeline;
 	})();
 
 	await _initPromise;
@@ -39,8 +44,12 @@ export async function tryRerank<T extends RerankCandidate>(
 	if (candidates.length <= 1) return candidates;
 	try {
 		await initReranker();
-		const inputs = candidates.map((c) => ({ text: query, text_pair: String(c.text ?? '') }));
-		const results: Array<{ score: number }> = await _pipeline(inputs);
+		if (!_pipeline) return candidates;
+		const inputs: RerankInput[] = candidates.map((c) => ({
+			text: query,
+			text_pair: String(c.text ?? '')
+		}));
+		const results = await _pipeline(inputs);
 		return candidates
 			.map((c, i) => ({ c, score: results[i]?.score ?? 0 }))
 			.sort((a, b) => b.score - a.score)

@@ -166,21 +166,30 @@ export const POST: RequestHandler = async ({ request }) => {
 				});
 			};
 
+			// Narrow shape of the chunks emitted by `result.toUIMessageStream()` that
+			// we actually read here. The AI SDK's union type is too wide to address
+			// with property access, so we project onto the fields we care about.
+			type StreamChunk = {
+				type: string;
+				delta?: string;
+				finishReason?: string;
+			};
+			type WriterChunk = Parameters<typeof writer.write>[0];
+
 			const reader = result.toUIMessageStream().getReader();
 			try {
 				while (true) {
 					const { done, value } = await reader.read();
 					if (done) break;
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					const evtType = (value as any).type as string;
+					const chunk = value as StreamChunk;
+					const evtType = chunk.type;
 
 					// Intercept reasoning-* events — AI SDK v6 gets stuck in streaming state
 					// when they reach the client. Instead we flush them incrementally as
 					// message-metadata so the UI can show live chain-of-thought.
 					if (evtType.startsWith('reasoning-')) {
 						if (evtType === 'reasoning-delta') {
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							reasoningText += (value as any).delta ?? '';
+							reasoningText += chunk.delta ?? '';
 							// Flush every 6 tokens so the client sees reasoning build up live
 							// without flooding the stream with per-token metadata events.
 							if (++reasoningFlushCount % 6 === 0) flushReasoning();
@@ -190,7 +199,7 @@ export const POST: RequestHandler = async ({ request }) => {
 						continue;
 					}
 
-					if (evtType === 'finish' && (value as any).finishReason === 'error') {
+					if (evtType === 'finish' && chunk.finishReason === 'error') {
 						const msg =
 							capturedError instanceof Error
 								? capturedError.message
@@ -201,8 +210,7 @@ export const POST: RequestHandler = async ({ request }) => {
 						writer.write({ type: 'text-delta', delta: `⚠ ${msg}`, id: 'oracle-error' });
 						writer.write({ type: 'text-end', id: 'oracle-error' });
 					}
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					writer.write(value as any);
+					writer.write(value as WriterChunk);
 				}
 			} finally {
 				reader.releaseLock();
