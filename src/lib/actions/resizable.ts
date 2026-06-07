@@ -10,8 +10,13 @@ export interface ResizableParams {
 	rightGap?: number;
 }
 
+/** Smallest the resized pane may shrink to (px). */
+const DEFAULT_MIN_WIDTH = 220;
+/** Space reserved for the other pane so it never collapses (px). */
+const DEFAULT_RIGHT_GAP = 360;
+
 export function resizable(node: HTMLElement, params: ResizableParams) {
-	let { onResize, min = 220, rightGap = 360 } = params;
+	let { onResize, min = DEFAULT_MIN_WIDTH, rightGap = DEFAULT_RIGHT_GAP } = params;
 
 	function onPointerDown(e: PointerEvent) {
 		const startX = e.clientX;
@@ -36,7 +41,7 @@ export function resizable(node: HTMLElement, params: ResizableParams) {
 
 	return {
 		update(p: ResizableParams) {
-			({ onResize, min = 220, rightGap = 360 } = p);
+			({ onResize, min = DEFAULT_MIN_WIDTH, rightGap = DEFAULT_RIGHT_GAP } = p);
 		},
 		destroy() {
 			node.removeEventListener('pointerdown', onPointerDown);

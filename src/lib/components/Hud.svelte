@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { embeddingModel, modelStatus, downloadProgress, MODEL_LABELS } from '$lib/rag/embeddings';
 	import { readyCount, isIngesting } from '$lib/stores/ingestion';
-	import { theme } from '$lib/stores/theme';
-	import type { EmbeddingModel } from '$lib/types';
+	import { theme, THEME } from '$lib/stores/theme';
+	import { EMBEDDING_MODEL, type EmbeddingModel } from '$lib/types';
 	import { ICON_SIZE, ICON_NAME } from '$lib/ui/tokens';
 	import PixelIcon from './PixelIcon.svelte';
 
@@ -13,7 +13,11 @@
 
 	let { onOpenSettings, onLoadScroll }: Props = $props();
 
-	const MODEL_CYCLE: EmbeddingModel[] = ['minilm', 'mpnet', 'openai'];
+	const MODEL_CYCLE: EmbeddingModel[] = [
+		EMBEDDING_MODEL.minilm,
+		EMBEDDING_MODEL.mpnet,
+		EMBEDDING_MODEL.openai
+	];
 
 	function cycleModel() {
 		const idx = MODEL_CYCLE.indexOf($embeddingModel);
@@ -61,7 +65,7 @@
 		title="Toggle theme"
 		aria-label="Toggle theme"
 		><PixelIcon
-			name={$theme === 'dark' ? ICON_NAME.sun : ICON_NAME.moon}
+			name={$theme === THEME.dark ? ICON_NAME.sun : ICON_NAME.moon}
 			size={ICON_SIZE.xl}
 		/></button
 	>
