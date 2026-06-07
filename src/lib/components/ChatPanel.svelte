@@ -456,7 +456,7 @@
 		<button
 			class="btn btn-primary"
 			onclick={handleSubmit}
-			aria-label={isBusy ? 'Generating answer, please wait' : 'Ask the Oracle'}
+			aria-label={isBusy ? 'Generating answer, please wait' : undefined}
 			disabled={$readyCount === 0 || isBusy || !inputValue.trim()}
 		>
 			{isBusy ? '…' : 'CAST'}
