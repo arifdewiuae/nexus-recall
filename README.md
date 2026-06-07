@@ -10,7 +10,7 @@
      and embed it here — highest-ROI portfolio step.
      ![Nexus Recall demo](docs/demo.gif) -->
 
-📖 **[How it works under the hood →](docs/how-it-works.html)** (standalone deep-dive page)
+📖 **[How it works under the hood →](docs/how-it-works.html)** (standalone deep-dive page) · **[Conventions & FAQ →](docs/CONVENTIONS.md)**
 
 ---
 
@@ -54,9 +54,10 @@ Browser (Svelte 5 runes)
 ├── routes/+page.svelte         split-pane: Tome (viewer) | Oracle (chat)
 ├── components/
 │   ├── DocumentViewer.svelte    PDF/MD render + highlight overlays
-│   ├── ChatPanel.svelte         @ai-sdk/svelte Chat → streaming bubbles + citations + cost
-│   └── ChunkVisualizer.svelte   chunk map
+│   ├── ChatPanel.svelte         orchestrator → oracle/{OracleHeader,MessageList,OracleInput,…}
+│   └── …                        Hud, DocumentTabs, IngestProgress, SettingsModal, …
 ├── stores/                      ingestion state machine, apiKeys, theme, toast, reasoning
+├── utils/                       pure, tested helpers (cite-match, format, oracle-markdown, parse-text)
 └── rag/  (runs in the browser / Web Worker)
     ├── parser.ts                pdfjs-dist + markdown
     ├── chunker.ts               LangChain splitters, source::page::index chunk IDs
