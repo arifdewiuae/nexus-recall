@@ -171,6 +171,22 @@
 		return meta?.reasoning ?? '';
 	}
 
+	interface MsgMeta {
+		costUsd?: number;
+		usage?: { inputTokens?: number; outputTokens?: number };
+		truncated?: boolean;
+	}
+
+	function getMsgMeta(msg: (typeof chat.messages)[0]): MsgMeta {
+		return (msg.metadata as MsgMeta | null | undefined) ?? {};
+	}
+
+	/** Formats a server-computed USD cost; sub-cent keeps 4 dp. */
+	function fmtCost(cost: number): string {
+		if (cost === 0) return '$0.00';
+		return cost < 0.01 ? `$${cost.toFixed(4)}` : `$${cost.toFixed(2)}`;
+	}
+
 	function getTextContent(msg: (typeof chat.messages)[0]): string {
 		return msg.parts
 			.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
@@ -179,7 +195,14 @@
 	}
 
 	function renderOracleHtml(text: string, citations: Citation[]): string {
-		const html = marked.parse(text) as string;
+		let html = marked.parse(text) as string;
+		// Hover-reveal copy button on every code block (delegated click below).
+		html = html
+			.replace(
+				/<pre>/g,
+				'<div class="code-wrap"><button class="code-copy" type="button" aria-label="Copy code">COPY</button><pre>'
+			)
+			.replace(/<\/pre>/g, '</pre></div>');
 		return html.replace(/\[(\d+)\]/g, (match, n) => {
 			const idx = parseInt(n) - 1;
 			if (idx >= 0 && idx < citations.length) {
@@ -189,10 +212,32 @@
 		});
 	}
 
-	function handleOracleMdClick(e: MouseEvent, citations: Citation[]) {
-		const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button.cite-inline');
-		if (!btn) return;
-		const idx = parseInt(btn.dataset.ref ?? '');
+	async function handleOracleMdClick(e: MouseEvent, citations: Citation[]) {
+		const target = e.target as HTMLElement;
+
+		// Code copy button (flips to ✓ for 2s)
+		const copyBtn = target.closest<HTMLButtonElement>('button.code-copy');
+		if (copyBtn) {
+			const code = copyBtn.parentElement?.querySelector('pre')?.textContent ?? '';
+			try {
+				await navigator.clipboard.writeText(code);
+				const original = copyBtn.textContent;
+				copyBtn.textContent = '✓';
+				copyBtn.classList.add('copied');
+				setTimeout(() => {
+					copyBtn.textContent = original;
+					copyBtn.classList.remove('copied');
+				}, 2000);
+			} catch {
+				/* clipboard unavailable — no-op */
+			}
+			return;
+		}
+
+		// Inline citation reference
+		const citeBtn = target.closest<HTMLButtonElement>('button.cite-inline');
+		if (!citeBtn) return;
+		const idx = parseInt(citeBtn.dataset.ref ?? '');
 		if (!isNaN(idx) && citations[idx]) onCiteClick?.(citations[idx]);
 	}
 </script>
@@ -280,6 +325,7 @@
 				{@const text = getTextContent(message)}
 				{@const citations = getCitations(message)}
 				{@const reasoning = getMsgReasoning(message)}
+				{@const meta = getMsgMeta(message)}
 				{@const isLastStreaming = isBusy && message === chat.lastMessage}
 				{#if text.trim() || isLastStreaming}
 					<div class="message">
@@ -339,6 +385,19 @@
 									<div class="reasoning-body">{reasoning}</div>
 								</details>
 							{/if}
+							{#if meta.costUsd != null && text.trim() && !isLastStreaming}
+								<div class="msg-meta" aria-label="Generation cost and token usage">
+									<span class="mm-cost">{fmtCost(meta.costUsd)}</span>
+									{#if meta.usage?.inputTokens != null}
+										<span class="mm-tok"
+											>{meta.usage.inputTokens}↓ {meta.usage.outputTokens ?? 0}↑ tok</span
+										>
+									{/if}
+									{#if meta.truncated}
+										<span class="mm-trunc" title="Hit the output token cap">⚠ truncated</span>
+									{/if}
+								</div>
+							{/if}
 						</div>
 					</div>
 				{/if}
@@ -397,6 +456,7 @@
 		<button
 			class="btn btn-primary"
 			onclick={handleSubmit}
+			aria-label={isBusy ? 'Generating answer, please wait' : 'Ask the Oracle'}
 			disabled={$readyCount === 0 || isBusy || !inputValue.trim()}
 		>
 			{isBusy ? '…' : 'CAST'}

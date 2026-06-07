@@ -147,6 +147,13 @@ export async function embedTexts(
 	return vectors;
 }
 
+// ADR: cloud embeddings call OpenAI directly from the browser with the user's
+// OWN key (the "own-keys" pattern — the key never touches our server). This is
+// a deliberate trade-off for a local-first demo: the default path is fully
+// local (Transformers.js), and 'openai' is an explicit opt-in the user enables
+// by pasting their key in Settings. The key lives only in localStorage and goes
+// straight to api.openai.com over HTTPS. Residual risk is XSS exfiltration;
+// the production fix is a server proxy. See docs/adr/0001-client-side-own-keys.md.
 async function embedWithOpenAI(texts: string[]): Promise<number[][]> {
 	const stored =
 		typeof localStorage !== 'undefined' ? localStorage.getItem('nexus-recall:api-keys') : null;

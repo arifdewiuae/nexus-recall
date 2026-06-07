@@ -41,14 +41,28 @@ export function resolveKeys(request: Request): ResolvedKeys | null {
 }
 
 /**
- * Returns an error message string if the selected provider lacks a key,
- * or null when the required key is present.
+ * Resolves which provider to actually call, expressing the fallback chain in
+ * code rather than a runbook:
+ *
+ *   • Explicit request → honored, but only if its key is present (otherwise a
+ *     helpful "add the key in Settings" error, so the UI's VIA toggle is clear).
+ *   • No request → primary (Fireworks) → fallback (Anthropic) → error.
+ *
+ * Runtime model failures (bad key, provider outage) are caught separately by
+ * the stream's onError and surfaced as an SSE error frame.
  */
-export function assertProviderKey(
-	provider: Provider | undefined,
+export function resolveProvider(
+	requested: Provider | undefined,
 	keys: ResolvedKeys
-): string | null {
-	if (provider === 'anthropic' && !keys.anthropicKey) return MESSAGES.anthropicKeyMissing;
-	if (provider !== 'anthropic' && !keys.fireworksKey) return MESSAGES.fireworksKeyMissing;
-	return null;
+): { provider: Provider } | { error: string } {
+	if (requested === 'anthropic') {
+		return keys.anthropicKey ? { provider: 'anthropic' } : { error: MESSAGES.anthropicKeyMissing };
+	}
+	if (requested === 'fireworks') {
+		return keys.fireworksKey ? { provider: 'fireworks' } : { error: MESSAGES.fireworksKeyMissing };
+	}
+	// No explicit provider — fall through the chain.
+	if (keys.fireworksKey) return { provider: 'fireworks' };
+	if (keys.anthropicKey) return { provider: 'anthropic' };
+	return { error: MESSAGES.keysRequired };
 }

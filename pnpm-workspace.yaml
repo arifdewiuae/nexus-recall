@@ -1,0 +1,15 @@
+# pnpm ignores npm's package.json "overrides" key — version pins live here.
+overrides:
+  protobufjs: '>=7.6.0'
+  cookie: '>=0.7.0'
+
+# Dependencies allowed to run post-install build scripts (pnpm blocks these by
+# default for supply-chain safety). Keep this list minimal and explicit.
+onlyBuiltDependencies:
+  - esbuild
+
+# Transitive native deps we deliberately do NOT build — unused in our pipeline.
+# Declaring them here silences the install warning and keeps pnpm 11's
+# strictDepBuilds (which fails the build on unresolved scripts) green.
+ignoredBuiltDependencies:
+  - sharp

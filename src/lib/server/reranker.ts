@@ -12,8 +12,16 @@ export interface RerankCandidate {
 type RerankInput = { text: string; text_pair: string };
 type RerankPipeline = (inputs: RerankInput[]) => Promise<Array<{ score: number; label?: string }>>;
 
+/** Cross-encoder model used for reranking — referenced by health/diagnostics. */
+export const RERANKER_MODEL_ID = 'cross-encoder/ms-marco-MiniLM-L-6-v2';
+
 let _pipeline: RerankPipeline | null = null;
 let _initPromise: Promise<void> | null = null;
+
+/** Whether the reranker pipeline has finished loading (for /api/health). */
+export function isRerankerWarm(): boolean {
+	return _pipeline !== null;
+}
 
 /**
  * Download and load the cross-encoder pipeline.  Safe to call multiple times —
@@ -26,7 +34,7 @@ export async function initReranker(): Promise<void> {
 	_initPromise = (async () => {
 		const { pipeline, env } = await import('@xenova/transformers');
 		env.allowLocalModels = false;
-		const p = await pipeline('text-classification', 'cross-encoder/ms-marco-MiniLM-L-6-v2');
+		const p = await pipeline('text-classification', RERANKER_MODEL_ID);
 		_pipeline = p as unknown as RerankPipeline;
 	})();
 

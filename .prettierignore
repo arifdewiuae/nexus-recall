@@ -11,4 +11,6 @@ bun.lockb
 # Design prototypes and Claude config
 /Design/
 /.claude/
-\# RAG Document Explorer with Intelligent.md
+
+# Generated static deep-dive page (hand-tuned inline CSS — leave as-is)
+/docs/how-it-works.html
