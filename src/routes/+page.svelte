@@ -9,6 +9,7 @@
 	} from '$lib/stores/ingestion';
 	import { resizable } from '$lib/actions/resizable';
 	import { DOCUMENT_STATUS } from '$lib/types';
+	import { ASSET } from '$lib/routes';
 	import DocumentViewer from '$lib/components/DocumentViewer.svelte';
 	import ChatPanel from '$lib/components/ChatPanel.svelte';
 	import SkeletonPane from '$lib/components/SkeletonPane.svelte';
@@ -94,7 +95,7 @@
 	}
 
 	async function summonSample() {
-		const res = await fetch('/sample.md');
+		const res = await fetch(ASSET.sampleDoc);
 		const text = await res.text();
 		ingestFiles([new File([text], 'dragon-codex.md', { type: 'text/markdown' })]);
 	}
