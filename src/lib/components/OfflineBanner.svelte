@@ -9,6 +9,7 @@
 		const goOnline = () => (offline = false);
 		window.addEventListener('offline', goOffline);
 		window.addEventListener('online', goOnline);
+
 		return () => {
 			window.removeEventListener('offline', goOffline);
 			window.removeEventListener('online', goOnline);

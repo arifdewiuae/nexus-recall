@@ -1,24 +1,9 @@
 import type { ChunkRecord, Citation } from './chat.schema';
+import { CONTEXT_CHAR_BUDGET } from '$lib/server/config';
 
-// ── Constants ──────────────────────────────────────────────────────────────────
-
-/** Maximum number of reranked chunks to include in the context window. */
-export const TOP_K = 8;
-
-/**
- * Context-window budget. The two knobs — `TOP_K` here and `MAX_OUTPUT_TOKENS`
- * in chat.models.ts — are set together, not independently:
- *
- *   system prompt   ~300 tokens
- *   context         TOP_K (8) × ~800-char chunks  ≈ 1,600 tokens
- *   max output      1,024 tokens (MAX_OUTPUT_TOKENS)
- *   ───────────────────────────────────────────────────────────
- *   ≈ 3k tokens — comfortably inside a 32k+ window with >20% headroom.
- *
- * `CONTEXT_CHAR_BUDGET` is a hard backstop: oversized chunks can't blow the
- * budget even if reranking returns unusually long passages.
- */
-export const CONTEXT_CHAR_BUDGET = 24_000; // ≈ 6k tokens
+// Context-window budget: TOP_K (config) × ~800-char chunks + system prompt +
+// MAX_OUTPUT_TOKENS must fit the model window with headroom. CONTEXT_CHAR_BUDGET
+// is the hard backstop so oversized chunks can't blow it.
 
 // ── Context assembly ───────────────────────────────────────────────────────────
 

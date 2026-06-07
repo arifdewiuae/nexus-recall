@@ -3,10 +3,11 @@ import { json } from '@sveltejs/kit';
 import { streamText, createUIMessageStream, createUIMessageStreamResponse } from 'ai';
 import { tryRerank } from '$lib/server/reranker';
 
+import { MODEL_IDS, MAX_OUTPUT_TOKENS, TOP_K, type Provider } from '$lib/server/config';
 import { ChatRequestSchema, type ChunkRecord } from './chat.schema';
 import { resolveKeys, resolveProvider, MESSAGES, type ResolvedKeys } from './chat.keys';
-import { getModel, MODEL_IDS, MAX_OUTPUT_TOKENS, type Provider } from './chat.models';
-import { assembleContext, buildCitations, TOP_K } from './chat.context';
+import { getModel } from './chat.models';
+import { assembleContext, buildCitations } from './chat.context';
 import { createLogger } from './chat.logger';
 import { interceptReasoning } from './chat.stream';
 

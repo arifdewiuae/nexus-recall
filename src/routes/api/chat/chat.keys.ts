@@ -1,5 +1,5 @@
 import { env } from '$env/dynamic/private';
-import type { Provider } from './chat.models';
+import type { Provider } from '$lib/server/config';
 
 // ── User-facing messages ───────────────────────────────────────────────────────
 

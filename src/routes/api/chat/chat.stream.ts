@@ -1,6 +1,6 @@
 import type { Logger } from './chat.logger';
 import type { Citation } from './chat.schema';
-import type { Provider } from './chat.models';
+import type { Provider } from '$lib/server/config';
 import { estimateCostUsd, type TokenUsage } from './chat.pricing';
 import { MESSAGES } from './chat.keys';
 

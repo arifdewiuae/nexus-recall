@@ -1,11 +1,7 @@
-import type { Provider } from './chat.models';
+import { PRICING, type Provider } from '$lib/server/config';
 
-// ── Usage + pricing ──────────────────────────────────────────────────────────
-// Cost is always computed server-side from the model's reported token usage —
-// the client never sees a price it could tamper with. Rates are USD per 1M
-// tokens; update them when you rotate models (they are deliberately a single
-// map so a model swap is a one-line change). Values are list prices and are
-// approximate — instrument actual spend before relying on them for billing.
+// Cost is always computed server-side from the model's reported token usage — the
+// client never sees a price it could tamper with. Rates live in $lib/server/config.
 
 export interface TokenUsage {
 	inputTokens?: number;
@@ -13,24 +9,10 @@ export interface TokenUsage {
 	totalTokens?: number;
 }
 
-interface Rate {
-	/** USD per 1M input tokens. */
-	inputPerM: number;
-	/** USD per 1M output tokens. */
-	outputPerM: number;
-}
-
-export const PRICING = {
-	// DeepSeek V4 Flash on Fireworks — representative small-model rate.
-	fireworks: { inputPerM: 0.22, outputPerM: 0.88 },
-	// Claude Sonnet 4.x list pricing.
-	anthropic: { inputPerM: 3, outputPerM: 15 }
-} as const satisfies Record<Provider, Rate>;
-
 /**
- * Estimates the USD cost of a single generation from its token usage.
- * Returns 0 when usage is unavailable rather than throwing — cost is telemetry,
- * never on the critical path.
+ * Estimates the USD cost of a single generation from its token usage. Returns 0
+ * when usage is unavailable rather than throwing — cost is telemetry, never on
+ * the critical path.
  */
 export function estimateCostUsd(provider: Provider, usage: TokenUsage | undefined): number {
 	if (!usage) return 0;

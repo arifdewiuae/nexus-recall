@@ -2,6 +2,8 @@
 // downloaded and loaded exactly once per server process, regardless of which
 // route triggers it first (warmup or chat).
 
+import { RERANKER_MODEL_ID } from './config';
+
 export interface RerankCandidate {
 	id: string;
 	[key: string]: unknown;
@@ -11,9 +13,6 @@ export interface RerankCandidate {
 // it accepts a batch of {text, text_pair} inputs and returns per-input scores.
 type RerankInput = { text: string; text_pair: string };
 type RerankPipeline = (inputs: RerankInput[]) => Promise<Array<{ score: number; label?: string }>>;
-
-/** Cross-encoder model used for reranking — referenced by health/diagnostics. */
-export const RERANKER_MODEL_ID = 'cross-encoder/ms-marco-MiniLM-L-6-v2';
 
 let _pipeline: RerankPipeline | null = null;
 let _initPromise: Promise<void> | null = null;

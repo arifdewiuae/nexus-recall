@@ -1,8 +1,8 @@
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
-import { MODEL_IDS } from '../chat/chat.models';
-import { RERANKER_MODEL_ID, isRerankerWarm } from '$lib/server/reranker';
+import { MODEL_IDS, RERANKER_MODEL_ID } from '$lib/server/config';
+import { isRerankerWarm } from '$lib/server/reranker';
 
 /**
  * GET /api/health
