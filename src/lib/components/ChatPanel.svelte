@@ -67,6 +67,33 @@
 		if ($readyCount > 0) warmup();
 	});
 
+	/** Embed the question, search the store, and mark the top hits for highlighting. */
+	async function retrieveChunks(question: string): Promise<unknown[]> {
+		await loadModel();
+
+		const queryVec = await embedText(question);
+		const chunks = await similaritySearch(queryVec, SEARCH_TOP_K, documentFilter ?? undefined);
+
+		const hits = new SvelteMap<string, number>();
+		(chunks as Array<{ id: string }>)
+			.slice(0, HIT_HIGHLIGHT_COUNT)
+			.forEach((c, i) => hits.set(c.id, i));
+		hitChunks.set(hits);
+
+		return chunks;
+	}
+
+	/** User keys travel as request headers (never the body). */
+	function keyHeaders(): Record<string, string> {
+		const keys = $apiKeys;
+		const headers: Record<string, string> = {};
+
+		if (keys.anthropicKey) headers['x-anthropic-key'] = keys.anthropicKey;
+		if (keys.fireworksKey) headers['x-fireworks-key'] = keys.fireworksKey;
+
+		return headers;
+	}
+
 	async function handleSubmit() {
 		const question = inputValue.trim();
 		if (!question || isBusy || $readyCount === 0) return;
@@ -75,36 +102,23 @@
 		isSearching = true;
 
 		let chunks: unknown[];
-
 		try {
-			await loadModel();
-			const queryVec = await embedText(question);
-			chunks = await similaritySearch(queryVec, SEARCH_TOP_K, documentFilter ?? undefined);
+			chunks = await retrieveChunks(question);
 		} catch (err) {
-			isSearching = false;
 			searchError = String(err);
 			return;
+		} finally {
+			isSearching = false;
 		}
 
-		// Record which chunks matched (rank 0 = best) so the viewer can highlight them.
-		const newHits = new SvelteMap<string, number>();
-
-		(chunks as Array<{ id: string }>)
-			.slice(0, HIT_HIGHLIGHT_COUNT)
-			.forEach((c, i) => newHits.set(c.id, i));
-		hitChunks.set(newHits);
-
 		inputValue = '';
-		isSearching = false;
-
-		const keys = $apiKeys;
-		const headers: Record<string, string> = {};
-		if (keys.anthropicKey) headers['x-anthropic-key'] = keys.anthropicKey;
-		if (keys.fireworksKey) headers['x-fireworks-key'] = keys.fireworksKey;
 
 		await chat.sendMessage(
 			{ text: question },
-			{ headers, body: { question, chunks, documentFilter: documentFilter ?? undefined, provider } }
+			{
+				headers: keyHeaders(),
+				body: { question, chunks, documentFilter: documentFilter ?? undefined, provider }
+			}
 		);
 	}
 

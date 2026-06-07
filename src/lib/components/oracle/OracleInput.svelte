@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { ICON_SIZE, ICON_NAME } from '$lib/ui/tokens';
 	import PixelIcon from '../PixelIcon.svelte';
 
 	interface Props {
@@ -37,7 +38,7 @@
 		</div>
 	{/if}
 	<div class="oracle-input">
-		<span class="prompt"><PixelIcon name="arrow" size={8} /></span>
+		<span class="prompt"><PixelIcon name={ICON_NAME.arrow} size={ICON_SIZE.xs} /></span>
 		<input
 			bind:this={inputEl}
 			type="text"

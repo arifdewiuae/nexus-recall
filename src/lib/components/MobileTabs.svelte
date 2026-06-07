@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { readyCount } from '$lib/stores/ingestion';
 	import { MOBILE_TAB, type MobileTab } from '$lib/types';
+	import { ICON_SIZE, ICON_NAME } from '$lib/ui/tokens';
 	import PixelIcon from './PixelIcon.svelte';
 
 	let { tab = $bindable() }: { tab: MobileTab } = $props();
@@ -15,7 +16,7 @@
 		aria-selected={tab === MOBILE_TAB.tome}
 		onclick={() => (tab = MOBILE_TAB.tome)}
 	>
-		<PixelIcon name="sword" size={10} /> TOME
+		<PixelIcon name={ICON_NAME.sword} size={ICON_SIZE.sm} /> TOME
 		{#if $readyCount > 0}<span class="mt-count">{$readyCount}</span>{/if}
 	</button>
 	<button
@@ -25,6 +26,6 @@
 		aria-selected={tab === MOBILE_TAB.oracle}
 		onclick={() => (tab = MOBILE_TAB.oracle)}
 	>
-		<PixelIcon name="arrow" size={10} /> ORACLE
+		<PixelIcon name={ICON_NAME.arrow} size={ICON_SIZE.sm} /> ORACLE
 	</button>
 </div>

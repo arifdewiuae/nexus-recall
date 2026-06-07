@@ -2,6 +2,7 @@
 	import { tick } from 'svelte';
 	import type { UIMessage } from 'ai';
 	import type { Citation } from '$lib/types';
+	import { ICON_SIZE, ICON_NAME, SPRITE_SCALE, SPRITE_NAME } from '$lib/ui/tokens';
 	import Sprite from '../Sprite.svelte';
 	import PixelIcon from '../PixelIcon.svelte';
 	import OracleMessage from './OracleMessage.svelte';
@@ -52,9 +53,11 @@
 >
 	{#if messages.length === 0 && !isBusy}
 		<div class="oracle-empty">
-			<div class="wiz-bob"><Sprite name="wizard" scale={5} /></div>
+			<div class="wiz-bob"><Sprite name={SPRITE_NAME.wizard} scale={SPRITE_SCALE.lg} /></div>
 			<div class="oe-title">THE ORACLE AWAITS</div>
-			<div class="oe-sub"><PixelIcon name="arrow" size={8} /> YOUR QUESTION</div>
+			<div class="oe-sub">
+				<PixelIcon name={ICON_NAME.arrow} size={ICON_SIZE.xs} /> YOUR QUESTION
+			</div>
 			<div class="oe-hint">{ready ? 'ASK THE ORACLE' : 'LOAD A SCROLL FIRST'}</div>
 		</div>
 	{:else}
@@ -64,7 +67,7 @@
 
 		{#if status === CHAT_STATUS.submitted}
 			<div class="message">
-				<div class="portrait"><Sprite name="wizard" scale={2} /></div>
+				<div class="portrait"><Sprite name={SPRITE_NAME.wizard} scale={SPRITE_SCALE.sm} /></div>
 				<div class="bubble">
 					<div class="bubble-name">ORACLE</div>
 					<span class="thinking-hint">{PROVIDER_LABEL[provider]} IS CONSULTING THE SCROLLS</span

@@ -3,6 +3,7 @@
 	import { readyCount, isIngesting } from '$lib/stores/ingestion';
 	import { theme } from '$lib/stores/theme';
 	import type { EmbeddingModel } from '$lib/types';
+	import { ICON_SIZE, ICON_NAME } from '$lib/ui/tokens';
 	import PixelIcon from './PixelIcon.svelte';
 
 	interface Props {
@@ -41,11 +42,12 @@
 			<span style="color:var(--ok)">{MODEL_LABELS[$embeddingModel]}</span>
 		{:else if $modelStatus === 'error'}
 			<span style="color:var(--err); display:inline-flex; align-items:center; gap:4px"
-				>ERROR <PixelIcon name="arrow" size={8} /></span
+				>ERROR <PixelIcon name={ICON_NAME.arrow} size={ICON_SIZE.xs} /></span
 			>
 		{:else}
 			<span class="chip-accent" style="display:inline-flex; align-items:center; gap:4px"
-				>{MODEL_LABELS[$embeddingModel]} <PixelIcon name="arrow" size={8} /></span
+				>{MODEL_LABELS[$embeddingModel]}
+				<PixelIcon name={ICON_NAME.arrow} size={ICON_SIZE.xs} /></span
 			>
 		{/if}
 	</button>
@@ -58,16 +60,20 @@
 		onclick={() => theme.toggle()}
 		title="Toggle theme"
 		aria-label="Toggle theme"
-		><PixelIcon name={$theme === 'dark' ? 'sun' : 'moon'} size={16} /></button
+		><PixelIcon
+			name={$theme === 'dark' ? ICON_NAME.sun : ICON_NAME.moon}
+			size={ICON_SIZE.xl}
+		/></button
 	>
 	<button
 		class="chip chip-btn chip-icon"
 		onclick={onOpenSettings}
 		title="API key settings"
-		aria-label="Open API key settings"><PixelIcon name="gear" size={16} /></button
+		aria-label="Open API key settings"
+		><PixelIcon name={ICON_NAME.gear} size={ICON_SIZE.xl} /></button
 	>
 	<button class="btn btn-primary" onclick={onLoadScroll} disabled={$isIngesting}>
-		<PixelIcon name="sword" size={14} />
+		<PixelIcon name={ICON_NAME.sword} size={ICON_SIZE.lg} />
 		LOAD SCROLL
 	</button>
 </div>

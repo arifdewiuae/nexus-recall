@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { UIMessage } from 'ai';
 	import type { Citation } from '$lib/types';
+	import { SPRITE_SCALE, SPRITE_NAME } from '$lib/ui/tokens';
 	import Sprite from '../Sprite.svelte';
 	import { showReasoning } from '$lib/stores/reasoning';
 	import { renderOracleHtml } from '$lib/utils/oracle-markdown';
@@ -63,7 +64,7 @@
 
 {#if message.role === MESSAGE_ROLE.user}
 	<div class="message" style="flex-direction:row-reverse">
-		<div class="portrait"><Sprite name="adventurer" scale={2} /></div>
+		<div class="portrait"><Sprite name={SPRITE_NAME.adventurer} scale={SPRITE_SCALE.sm} /></div>
 		<div class="bubble hero" style="text-align:right">
 			<div class="bubble-name" style="text-align:right">YOU</div>
 			{text}
@@ -72,7 +73,7 @@
 {:else if message.role === MESSAGE_ROLE.assistant}
 	{#if text.trim() || isLastStreaming}
 		<div class="message">
-			<div class="portrait"><Sprite name="wizard" scale={2} /></div>
+			<div class="portrait"><Sprite name={SPRITE_NAME.wizard} scale={SPRITE_SCALE.sm} /></div>
 			<div class="bubble">
 				<div class="bubble-name">ORACLE</div>
 				{#if isLastStreaming && !text.trim()}

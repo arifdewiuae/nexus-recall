@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { apiKeys } from '$lib/stores/apiKeys';
+	import { ICON_SIZE, ICON_NAME } from '$lib/ui/tokens';
 	import PixelIcon from '$lib/components/PixelIcon.svelte';
 
 	interface Props {
@@ -68,10 +69,10 @@
 		<div class="modal">
 			<div class="modal-header">
 				<span class="modal-title" style="display:inline-flex;align-items:center;gap:6px"
-					><PixelIcon name="gear" size={10} /> API KEYS</span
+					><PixelIcon name={ICON_NAME.gear} size={ICON_SIZE.sm} /> API KEYS</span
 				>
 				<button class="modal-close" onclick={() => (open = false)} aria-label="Close settings"
-					><PixelIcon name="close" size={12} /></button
+					><PixelIcon name={ICON_NAME.close} size={ICON_SIZE.md} /></button
 				>
 			</div>
 
@@ -103,7 +104,10 @@
 							class="eye-btn"
 							onclick={() => (showAnthropic = !showAnthropic)}
 							aria-label={showAnthropic ? 'Hide key' : 'Show key'}
-							><PixelIcon name={showAnthropic ? 'eye-closed' : 'eye-open'} size={14} /></button
+							><PixelIcon
+								name={showAnthropic ? ICON_NAME.eyeClosed : ICON_NAME.eyeOpen}
+								size={ICON_SIZE.lg}
+							/></button
 						>
 					</div>
 				</div>
@@ -130,7 +134,10 @@
 							class="eye-btn"
 							onclick={() => (showFireworks = !showFireworks)}
 							aria-label={showFireworks ? 'Hide key' : 'Show key'}
-							><PixelIcon name={showFireworks ? 'eye-closed' : 'eye-open'} size={14} /></button
+							><PixelIcon
+								name={showFireworks ? ICON_NAME.eyeClosed : ICON_NAME.eyeOpen}
+								size={ICON_SIZE.lg}
+							/></button
 						>
 					</div>
 				</div>
@@ -157,7 +164,10 @@
 							class="eye-btn"
 							onclick={() => (showOpenai = !showOpenai)}
 							aria-label={showOpenai ? 'Hide key' : 'Show key'}
-							><PixelIcon name={showOpenai ? 'eye-closed' : 'eye-open'} size={14} /></button
+							><PixelIcon
+								name={showOpenai ? ICON_NAME.eyeClosed : ICON_NAME.eyeOpen}
+								size={ICON_SIZE.lg}
+							/></button
 						>
 					</div>
 				</div>
