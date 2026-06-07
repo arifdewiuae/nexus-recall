@@ -3,9 +3,9 @@ import { json } from '@sveltejs/kit';
 import { streamText, createUIMessageStream, createUIMessageStreamResponse } from 'ai';
 import { tryRerank } from '$lib/server/reranker';
 
-import { ChatRequestSchema } from './chat.schema';
-import { resolveKeys, resolveProvider, MESSAGES } from './chat.keys';
-import { getModel, MODEL_IDS, MAX_OUTPUT_TOKENS } from './chat.models';
+import { ChatRequestSchema, type ChunkRecord } from './chat.schema';
+import { resolveKeys, resolveProvider, MESSAGES, type ResolvedKeys } from './chat.keys';
+import { getModel, MODEL_IDS, MAX_OUTPUT_TOKENS, type Provider } from './chat.models';
 import { assembleContext, buildCitations, TOP_K } from './chat.context';
 import { createLogger } from './chat.logger';
 import { interceptReasoning } from './chat.stream';
@@ -24,32 +24,46 @@ const SYSTEM_PROMPT =
 	'When the scrolls hold no answer, say so with dignity — never fabricate. ' +
 	'Never break character. Never mention being an AI.';
 
+const buildUserMessage = (context: string, question: string) =>
+	`Sources:\n\n${context}\n\nQuestion: ${question}`;
+
+// ── Preflight: auth → validate → resolve provider ──────────────────────────────
+
+type Preflight =
+	| { ok: false; error: string; status: number }
+	| { ok: true; question: string; chunks: ChunkRecord[]; provider: Provider; keys: ResolvedKeys };
+
+async function preflight(request: Request): Promise<Preflight> {
+	const keys = resolveKeys(request);
+	if (!keys) return { ok: false, error: MESSAGES.keysRequired, status: 401 };
+
+	const parsed = ChatRequestSchema.safeParse(await request.json().catch(() => null));
+	if (!parsed.success) return { ok: false, error: parsed.error.message, status: 400 };
+
+	const resolved = resolveProvider(parsed.data.provider, keys);
+	if ('error' in resolved) return { ok: false, error: resolved.error, status: 400 };
+
+	return {
+		ok: true,
+		question: parsed.data.question,
+		chunks: parsed.data.chunks,
+		provider: resolved.provider,
+		keys
+	};
+}
+
 // ── Handler ────────────────────────────────────────────────────────────────────
 
 export const POST: RequestHandler = async ({ request }) => {
 	const log = createLogger(crypto.randomUUID());
 
-	const keys = resolveKeys(request);
-	if (!keys) {
-		return json({ error: MESSAGES.keysRequired }, { status: 401 });
-	}
+	const pre = await preflight(request);
+	if (!pre.ok) return json({ error: pre.error }, { status: pre.status });
 
-	const rawBody = await request.json().catch(() => null);
-	const parsed = ChatRequestSchema.safeParse(rawBody);
-	if (!parsed.success) {
-		return json({ error: parsed.error.message }, { status: 400 });
-	}
-
-	const { question, chunks, provider: requested } = parsed.data;
-
-	const resolved = resolveProvider(requested, keys);
-	if ('error' in resolved) {
-		return json({ error: resolved.error }, { status: 400 });
-	}
-	const { provider } = resolved;
+	const { question, chunks, provider, keys } = pre;
 	const modelId = MODEL_IDS[provider];
-
 	const model = getModel(provider, keys);
+
 	const ranked = (await tryRerank(question, chunks)).slice(0, TOP_K);
 	const context = assembleContext(ranked);
 	const citations = buildCitations(ranked);
@@ -73,7 +87,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				result: streamText({
 					model,
 					system: SYSTEM_PROMPT,
-					messages: [{ role: 'user', content: `Sources:\n\n${context}\n\nQuestion: ${question}` }],
+					messages: [{ role: 'user', content: buildUserMessage(context, question) }],
 					maxOutputTokens: MAX_OUTPUT_TOKENS,
 					abortSignal: request.signal,
 					onError: ({ error }) => log.error('streamText error', { error: String(error) })

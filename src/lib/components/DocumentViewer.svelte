@@ -96,6 +96,7 @@
 		// Prefer content-level elements — heading lines in chunk text should not
 		// shadow the actual paragraph that carries the cited content.
 		const contentBlocks = root.querySelectorAll<HTMLElement>('p, li, blockquote, td, pre');
+
 		for (const line of candidates) {
 			const needle = line.slice(0, 50);
 			for (const el of contentBlocks) {
@@ -147,6 +148,7 @@
 		}
 
 		if (focusedPage == null) return;
+
 		const target = parchmentEl.querySelector<HTMLElement>(`[data-page="${focusedPage}"]`);
 		if (target) {
 			target.scrollIntoView({ behavior: 'smooth', block: 'start' });

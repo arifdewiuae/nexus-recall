@@ -63,6 +63,13 @@ describe('assembleContext', () => {
 		const ctx = assembleContext(chunks);
 		expect(ctx).toContain('doc="a &quot;b&quot; &lt;c&gt;.pdf"');
 	});
+
+	it('caps the assembled context at the char budget', () => {
+		// Two ~20k-char chunks; only the first fits under the 24k budget.
+		const big = 'x'.repeat(20_000);
+		const ctx = assembleContext([makeChunk({ text: big }), makeChunk({ text: big })]);
+		expect(ctx.match(/<source /g)?.length).toBe(1);
+	});
 });
 
 // ── buildCitations ─────────────────────────────────────────────────────────────
@@ -214,6 +221,13 @@ describe('estimateCostUsd', () => {
 		expect(
 			estimateCostUsd('anthropic', { inputTokens: 1_000_000, outputTokens: 1_000_000 })
 		).toBeCloseTo(18);
+	});
+
+	it('uses the fireworks rate', () => {
+		// fireworks: $0.22/M in + $0.88/M out → 1M each = $1.10
+		expect(
+			estimateCostUsd('fireworks', { inputTokens: 1_000_000, outputTokens: 1_000_000 })
+		).toBeCloseTo(1.1);
 	});
 
 	it('returns 0 when usage is missing', () => {

@@ -19,6 +19,9 @@ export const MODEL_IDS = {
 
 export const MAX_OUTPUT_TOKENS = 1024;
 
+/** Fireworks exposes an OpenAI-compatible endpoint. */
+const FIREWORKS_BASE_URL = 'https://api.fireworks.ai/inference/v1';
+
 // ── Model factory ──────────────────────────────────────────────────────────────
 
 /**
@@ -31,7 +34,7 @@ export function getModel(provider: Provider, keys: ResolvedKeys) {
 		return createAnthropic({ apiKey: keys.anthropicKey })(MODEL_IDS.anthropic);
 	}
 	return createOpenAI({
-		baseURL: 'https://api.fireworks.ai/inference/v1',
+		baseURL: FIREWORKS_BASE_URL,
 		apiKey: keys.fireworksKey
 	})(MODEL_IDS.fireworks);
 }

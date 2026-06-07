@@ -1,4 +1,5 @@
 import { pipeline, env } from '@xenova/transformers';
+import { WORKER_COMMAND, WORKER_EVENT, type WorkerCommand } from './embedding.protocol';
 
 env.allowLocalModels = false;
 
@@ -11,32 +12,36 @@ type FeatureExtractor = (
 
 let extractor: FeatureExtractor | null = null;
 
-self.onmessage = async (e: MessageEvent) => {
-	const msg = e.data as { type: string; modelId?: string; id?: string; text?: string };
-
-	if (msg.type === 'load') {
-		try {
-			const loaded = await pipeline('feature-extraction', msg.modelId!, {
-				progress_callback: (p: Record<string, unknown>) => {
-					self.postMessage({ type: 'progress', payload: p });
-				}
-			});
-			extractor = loaded as unknown as FeatureExtractor;
-			self.postMessage({ type: 'ready' });
-		} catch (err) {
-			self.postMessage({ type: 'error', message: String(err) });
-		}
-	} else if (msg.type === 'embed') {
-		if (!extractor) {
-			self.postMessage({ type: 'embed_error', id: msg.id, message: 'Model not loaded' });
-			return;
-		}
-		try {
-			const output = await extractor(msg.text!, { pooling: 'mean', normalize: true });
-			const vector = Array.from(output.data);
-			self.postMessage({ type: 'embed_result', id: msg.id, vector });
-		} catch (err) {
-			self.postMessage({ type: 'embed_error', id: msg.id, message: String(err) });
-		}
+/** Download + cache the model, streaming progress back to the main thread. */
+async function handleLoad(modelId: string): Promise<void> {
+	try {
+		const loaded = await pipeline('feature-extraction', modelId, {
+			progress_callback: (payload: Record<string, unknown>) =>
+				self.postMessage({ type: WORKER_EVENT.progress, payload })
+		});
+		extractor = loaded as unknown as FeatureExtractor;
+		self.postMessage({ type: WORKER_EVENT.ready });
+	} catch (err) {
+		self.postMessage({ type: WORKER_EVENT.error, message: String(err) });
 	}
+}
+
+/** Embed one text, replying with the vector keyed by the request `id`. */
+async function handleEmbed(id: string, text: string): Promise<void> {
+	if (!extractor) {
+		self.postMessage({ type: WORKER_EVENT.embedError, id, message: 'Model not loaded' });
+		return;
+	}
+	try {
+		const output = await extractor(text, { pooling: 'mean', normalize: true });
+		self.postMessage({ type: WORKER_EVENT.embedResult, id, vector: Array.from(output.data) });
+	} catch (err) {
+		self.postMessage({ type: WORKER_EVENT.embedError, id, message: String(err) });
+	}
+}
+
+self.onmessage = (e: MessageEvent<WorkerCommand>) => {
+	const msg = e.data;
+	if (msg.type === WORKER_COMMAND.load) handleLoad(msg.modelId);
+	else if (msg.type === WORKER_COMMAND.embed) handleEmbed(msg.id, msg.text);
 };

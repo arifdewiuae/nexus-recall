@@ -7,16 +7,16 @@ export const MAX_QUESTION_LEN = 2000;
 
 // ── ChunkRecord ────────────────────────────────────────────────────────────────
 
-export const ChunkSchema = z
-	.object({
-		id: z.string(),
-		source: z.string(),
-		pageNumber: z.number().optional(),
-		chunkIndex: z.number(),
-		text: z.string(),
-		vector: z.array(z.number())
-	})
-	.passthrough();
+// looseObject = the Zod 4 replacement for the deprecated `.passthrough()` —
+// unknown keys on a chunk are preserved rather than stripped.
+export const ChunkSchema = z.looseObject({
+	id: z.string(),
+	source: z.string(),
+	pageNumber: z.number().optional(),
+	chunkIndex: z.number(),
+	text: z.string(),
+	vector: z.array(z.number())
+});
 
 export type ChunkRecord = z.infer<typeof ChunkSchema>;
 

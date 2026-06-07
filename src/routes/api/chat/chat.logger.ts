@@ -11,12 +11,13 @@ export interface Logger {
  */
 export function createLogger(requestId: string): Logger {
 	const base = { requestId };
+	const emit =
+		(level: 'info' | 'error', sink: (line: string) => void) =>
+		(msg: string, data?: Record<string, unknown>) =>
+			sink(JSON.stringify({ ...base, level, msg, ...data }));
+
 	return {
-		info(msg, data) {
-			console.log(JSON.stringify({ ...base, level: 'info', msg, ...data }));
-		},
-		error(msg, data) {
-			console.error(JSON.stringify({ ...base, level: 'error', msg, ...data }));
-		}
+		info: emit('info', console.log),
+		error: emit('error', console.error)
 	};
 }

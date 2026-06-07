@@ -19,6 +19,15 @@ export interface ResolvedKeys {
 	fireworksKey: string;
 }
 
+/** Per-provider: which resolved-keys field gates it, and the error if it's missing. */
+const PROVIDER_KEY = {
+	anthropic: { field: 'anthropicKey', missing: MESSAGES.anthropicKeyMissing },
+	fireworks: { field: 'fireworksKey', missing: MESSAGES.fireworksKeyMissing }
+} as const satisfies Record<Provider, { field: keyof ResolvedKeys; missing: string }>;
+
+/** Order tried when no provider is explicitly requested. */
+const PROVIDER_FALLBACK: readonly Provider[] = ['fireworks', 'anthropic'];
+
 // ── Key resolution ─────────────────────────────────────────────────────────────
 
 /**
@@ -55,14 +64,11 @@ export function resolveProvider(
 	requested: Provider | undefined,
 	keys: ResolvedKeys
 ): { provider: Provider } | { error: string } {
-	if (requested === 'anthropic') {
-		return keys.anthropicKey ? { provider: 'anthropic' } : { error: MESSAGES.anthropicKeyMissing };
+	if (requested) {
+		const { field, missing } = PROVIDER_KEY[requested];
+		return keys[field] ? { provider: requested } : { error: missing };
 	}
-	if (requested === 'fireworks') {
-		return keys.fireworksKey ? { provider: 'fireworks' } : { error: MESSAGES.fireworksKeyMissing };
-	}
-	// No explicit provider — fall through the chain.
-	if (keys.fireworksKey) return { provider: 'fireworks' };
-	if (keys.anthropicKey) return { provider: 'anthropic' };
-	return { error: MESSAGES.keysRequired };
+	// No explicit provider — try the fallback chain.
+	const available = PROVIDER_FALLBACK.find((p) => keys[PROVIDER_KEY[p].field]);
+	return available ? { provider: available } : { error: MESSAGES.keysRequired };
 }

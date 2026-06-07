@@ -148,6 +148,7 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 	let magA = 0;
 	let magB = 0;
 	const len = Math.min(a.length, b.length);
+
 	for (let i = 0; i < len; i++) {
 		dot += a[i] * b[i];
 		magA += a[i] * a[i];

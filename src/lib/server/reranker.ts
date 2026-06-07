@@ -34,6 +34,7 @@ export async function initReranker(): Promise<void> {
 	_initPromise = (async () => {
 		const { pipeline, env } = await import('@xenova/transformers');
 		env.allowLocalModels = false;
+
 		const p = await pipeline('text-classification', RERANKER_MODEL_ID);
 		_pipeline = p as unknown as RerankPipeline;
 	})();
@@ -50,14 +51,17 @@ export async function tryRerank<T extends RerankCandidate>(
 	candidates: T[]
 ): Promise<T[]> {
 	if (candidates.length <= 1) return candidates;
+
 	try {
 		await initReranker();
 		if (!_pipeline) return candidates;
+
 		const inputs: RerankInput[] = candidates.map((c) => ({
 			text: query,
 			text_pair: String(c.text ?? '')
 		}));
 		const results = await _pipeline(inputs);
+
 		return candidates
 			.map((c, i) => ({ c, score: results[i]?.score ?? 0 }))
 			.sort((a, b) => b.score - a.score)

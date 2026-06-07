@@ -8,6 +8,13 @@
 
 	let { open = $bindable() }: Props = $props();
 
+	/** Where each provider issues API keys — shown as the "↗ GET KEY" links. */
+	const KEY_CONSOLE_URLS = {
+		anthropic: 'https://console.anthropic.com/settings/keys',
+		fireworks: 'https://fireworks.ai/account/api-keys',
+		openai: 'https://platform.openai.com/api-keys'
+	} as const;
+
 	let anthropicKey = $state($apiKeys.anthropicKey);
 	let fireworksKey = $state($apiKeys.fireworksKey);
 	let openaiKey = $state($apiKeys.openaiKey);
@@ -77,11 +84,9 @@
 				<div class="field">
 					<label class="field-label" for="anthropic-key">
 						ANTHROPIC KEY
-						<a
-							href="https://console.anthropic.com/settings/keys"
-							target="_blank"
-							rel="noopener"
-							class="field-link">↗ GET KEY</a
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- external provider URL -->
+						<a href={KEY_CONSOLE_URLS.anthropic} target="_blank" rel="noopener" class="field-link"
+							>↗ GET KEY</a
 						>
 					</label>
 					<div class="field-row">
@@ -106,11 +111,9 @@
 				<div class="field">
 					<label class="field-label" for="fireworks-key">
 						FIREWORKS KEY
-						<a
-							href="https://fireworks.ai/account/api-keys"
-							target="_blank"
-							rel="noopener"
-							class="field-link">↗ GET KEY</a
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- external provider URL -->
+						<a href={KEY_CONSOLE_URLS.fireworks} target="_blank" rel="noopener" class="field-link"
+							>↗ GET KEY</a
 						>
 					</label>
 					<div class="field-row">
@@ -135,11 +138,9 @@
 				<div class="field">
 					<label class="field-label" for="openai-key">
 						OPENAI KEY <span class="field-optional">(cloud embeddings)</span>
-						<a
-							href="https://platform.openai.com/api-keys"
-							target="_blank"
-							rel="noopener"
-							class="field-link">↗ GET KEY</a
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- external provider URL -->
+						<a href={KEY_CONSOLE_URLS.openai} target="_blank" rel="noopener" class="field-link"
+							>↗ GET KEY</a
 						>
 					</label>
 					<div class="field-row">
