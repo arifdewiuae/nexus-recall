@@ -3,6 +3,8 @@
 	import { hitChunks } from '$lib/stores/ingestion';
 	import { SvelteMap } from 'svelte/reactivity';
 	import { marked } from 'marked';
+	import { SUPPORTED_EXTENSIONS } from '$lib/rag/parser';
+	import { findQuoteEl, rankClass, dedupeOverlap } from '$lib/utils/cite-match';
 
 	interface Props {
 		source: string;
@@ -22,7 +24,7 @@
 		focusNonce = 0
 	}: Props = $props();
 
-	const isPdf = $derived(source.toLowerCase().endsWith('.pdf'));
+	const isPdf = $derived(source.toLowerCase().endsWith(SUPPORTED_EXTENSIONS.pdf));
 
 	const sorted = $derived([...chunks].sort((a, b) => a.chunkIndex - b.chunkIndex));
 
@@ -36,14 +38,6 @@
 		return [...groups.entries()].sort(([a], [b]) => a - b);
 	});
 
-	function hlClass(chunk: Chunk): string {
-		const rank = $hitChunks.get(chunk.id);
-		if (rank === undefined) return '';
-		if (rank === 0) return 'hl-1';
-		if (rank <= 2) return 'hl-2';
-		return 'hl-3';
-	}
-
 	// Render each chunk separately so we can attach data-chunk-id for direct lookup.
 	// Overlap dedup is applied at the text level before rendering each chunk.
 	const mdChunks = $derived.by(() => {
@@ -51,15 +45,7 @@
 		const results: Array<{ id: string; html: string }> = [];
 		let prevText = '';
 		for (const c of sorted) {
-			const maxOverlap = Math.min(prevText.length, c.text.length, 300);
-			let overlap = 0;
-			for (let len = maxOverlap; len > 4; len--) {
-				if (prevText.endsWith(c.text.slice(0, len))) {
-					overlap = len;
-					break;
-				}
-			}
-			const text = c.text.slice(overlap);
+			const text = dedupeOverlap(prevText, c.text);
 			prevText = c.text;
 			if (text.trim()) {
 				results.push({ id: c.id, html: marked.parse(text) as string });
@@ -72,46 +58,11 @@
 	// Plain variable — not reactive, so changing it doesn't re-trigger the effect
 	let highlightedEl: Element | null = null;
 
-	function findQuoteEl(root: HTMLElement, quote: string): Element | null {
-		// Normalize: strip markdown syntax + typographic special chars, collapse whitespace
-		function norm(s: string) {
-			return s
-				.replace(/[#*_`[\]>~|—–·]/g, ' ')
-				.replace(/\s+/g, ' ')
-				.trim()
-				.toLowerCase();
-		}
-		// Split by lines so a multi-paragraph chunk doesn't force a cross-element match
-		const candidates = quote
-			.split('\n')
-			.map((l) =>
-				norm(l)
-					.replace(/^\d+\.\s+/, '')
-					.replace(/^[-•]\s+/, '')
-			)
-			.filter((l) => l.length >= 15);
-
-		if (candidates.length === 0) return null;
-
-		// Prefer content-level elements — heading lines in chunk text should not
-		// shadow the actual paragraph that carries the cited content.
-		const contentBlocks = root.querySelectorAll<HTMLElement>('p, li, blockquote, td, pre');
-
-		for (const line of candidates) {
-			const needle = line.slice(0, 50);
-			for (const el of contentBlocks) {
-				if (norm(el.textContent ?? '').includes(needle)) return el;
-			}
-		}
-		// Fall back to headings only if no paragraph-level match was found
-		const headings = root.querySelectorAll<HTMLElement>('h1, h2, h3, h4');
-		for (const line of candidates) {
-			const needle = line.slice(0, 50);
-			for (const el of headings) {
-				if (norm(el.textContent ?? '').includes(needle)) return el;
-			}
-		}
-		return null;
+	/** Scroll an element into view and flash the citation highlight on it. */
+	function focusElement(el: HTMLElement) {
+		el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+		el.classList.add('quote-highlight');
+		highlightedEl = el;
 	}
 
 	$effect(() => {
@@ -128,31 +79,19 @@
 			// 1. Prefer direct chunk ID lookup — exact, zero ambiguity
 			if (focusedChunkId) {
 				const el = parchmentEl.querySelector<HTMLElement>(`[data-chunk-id="${focusedChunkId}"]`);
-				if (el) {
-					el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-					el.classList.add('quote-highlight');
-					highlightedEl = el;
-					return;
-				}
+				if (el) return focusElement(el);
 			}
 			// 2. Fall back to fuzzy text search (e.g. citations from older messages)
 			if (focusedQuote) {
 				const el = findQuoteEl(parchmentEl, focusedQuote);
-				if (el) {
-					el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-					el.classList.add('quote-highlight');
-					highlightedEl = el;
-					return;
-				}
+				if (el) return focusElement(el as HTMLElement);
 			}
 		}
 
 		if (focusedPage == null) return;
 
 		const target = parchmentEl.querySelector<HTMLElement>(`[data-page="${focusedPage}"]`);
-		if (target) {
-			target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-		}
+		if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
 	});
 </script>
 
@@ -163,10 +102,10 @@
 		{#each pageGroups as [page, pageChunks] (page)}
 			<div class="page-sep" data-page={page}>── PAGE {page} ──</div>
 			{#each pageChunks as chunk (chunk.id)}
+				{@const cls = rankClass($hitChunks.get(chunk.id))}
 				<span
-					class="chunk {hlClass(chunk)}"
-					title={hlClass(chunk) ? `Chunk #${chunk.chunkIndex + 1} · matched` : undefined}
-					>{chunk.text}</span
+					class="chunk {cls}"
+					title={cls ? `Chunk #${chunk.chunkIndex + 1} · matched` : undefined}>{chunk.text}</span
 				>
 			{/each}
 		{/each}

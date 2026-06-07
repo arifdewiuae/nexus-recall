@@ -52,3 +52,11 @@ export interface DocumentEntry {
 	error?: string;
 	chunkCount?: number;
 }
+
+/** A source reference attached to an Oracle answer (client-side shape). */
+export interface Citation {
+	source: string;
+	page: number;
+	quote: string;
+	chunkId?: string;
+}

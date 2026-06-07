@@ -32,6 +32,7 @@
 		"eslint-plugin-svelte": "^3.17.0",
 		"fake-indexeddb": "^6.2.5",
 		"globals": "^17.4.0",
+		"happy-dom": "^20.10.2",
 		"prettier": "^3.8.1",
 		"prettier-plugin-svelte": "^3.5.1",
 		"prettier-plugin-tailwindcss": "^0.7.2",
