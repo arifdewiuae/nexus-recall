@@ -19,7 +19,13 @@
 		EMBEDDING_MODEL.openai
 	];
 
+	// The model is fixed once any scroll is indexed (or mid-ingest): all stored
+	// vectors must share one model/dimension or cross-document search breaks.
+	// Clearing the library re-opens the choice.
+	const modelLocked = $derived($readyCount > 0 || $isIngesting);
+
 	function cycleModel() {
+		if (modelLocked) return;
 		const idx = MODEL_CYCLE.indexOf($embeddingModel);
 		embeddingModel.set(MODEL_CYCLE[(idx + 1) % MODEL_CYCLE.length]);
 	}
@@ -34,7 +40,10 @@
 	<button
 		class="chip chip-btn"
 		onclick={cycleModel}
-		title="Click to cycle embedding model"
+		disabled={modelLocked}
+		title={modelLocked
+			? 'Clear all scrolls to change the embedding model'
+			: 'Click to cycle embedding model'}
 		aria-label="Cycle embedding model"
 	>
 		<span class="chip-dim">EMBED</span>

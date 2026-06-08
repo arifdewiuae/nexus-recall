@@ -34,7 +34,32 @@ export const MODEL_STATUS = {
 } as const;
 export type ModelStatus = (typeof MODEL_STATUS)[keyof typeof MODEL_STATUS];
 
-export const embeddingModel = writable<EmbeddingModel>(EMBEDDING_MODEL.minilm);
+const MODEL_STORAGE_KEY = 'nexus-recall:embedding-model';
+
+function isEmbeddingModel(v: unknown): v is EmbeddingModel {
+	return (
+		v === EMBEDDING_MODEL.minilm || v === EMBEDDING_MODEL.mpnet || v === EMBEDDING_MODEL.openai
+	);
+}
+
+/**
+ * Persisted across reloads so the model that produced the stored vectors is
+ * still active afterwards — a reset to MiniLM (384-d) against an MPNet (768-d)
+ * index would silently corrupt similarity search. The Hud locks the selector
+ * while documents exist, so the stored vectors can only ever be single-model.
+ */
+function createEmbeddingModelStore() {
+	const stored =
+		typeof localStorage !== 'undefined' ? localStorage.getItem(MODEL_STORAGE_KEY) : null;
+	const initial = isEmbeddingModel(stored) ? stored : EMBEDDING_MODEL.minilm;
+	const store = writable<EmbeddingModel>(initial);
+	if (typeof localStorage !== 'undefined') {
+		store.subscribe((m) => localStorage.setItem(MODEL_STORAGE_KEY, m));
+	}
+	return store;
+}
+
+export const embeddingModel = createEmbeddingModelStore();
 export const modelStatus = writable<ModelStatus>(MODEL_STATUS.idle);
 export const downloadProgress = writable<{ name: string; progress: number } | null>(null);
 

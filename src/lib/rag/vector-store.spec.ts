@@ -45,6 +45,14 @@ describe('cosineSimilarity', () => {
 		expect(cosineSimilarity(a, b)).toBeCloseTo(0);
 		expect(cosineSimilarity(a, c)).toBeCloseTo(1 / Math.sqrt(2));
 	});
+
+	it('returns 0 for mismatched dimensions instead of truncating', () => {
+		// e.g. a MiniLM 384-d query against an MPNet 768-d stored vector — the
+		// vectors are not comparable, so a fail-safe 0 (no hit) is required to
+		// avoid garbage rankings from scoring over a truncated prefix.
+		expect(cosineSimilarity([1, 1, 1], [1, 1, 1, 1])).toBe(0);
+		expect(cosineSimilarity([1, 2], [1, 2, 3])).toBe(0);
+	});
 });
 
 describe('vector store (IndexedDB)', () => {

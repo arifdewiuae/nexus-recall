@@ -144,10 +144,15 @@ export async function similaritySearch(
 }
 
 export function cosineSimilarity(a: number[], b: number[]): number {
+	// Different lengths mean the vectors came from different embedding models
+	// (e.g. MiniLM 384-d vs MPNet 768-d) and are not comparable — fail safe to 0
+	// (no hit) rather than scoring over a truncated prefix and returning garbage.
+	if (a.length !== b.length) return 0;
+
 	let dot = 0;
 	let magA = 0;
 	let magB = 0;
-	const len = Math.min(a.length, b.length);
+	const len = a.length;
 
 	for (let i = 0; i < len; i++) {
 		dot += a[i] * b[i];
