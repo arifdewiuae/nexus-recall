@@ -35,7 +35,7 @@ The retrieved chunks are assembled into a prompt and sent to the language model 
 
 Nexus Recall supports two LLM providers:
 
-- **Fireworks AI** — runs Llama 3.1 70B at high speed, ideal for long documents.
+- **Fireworks AI** — runs DeepSeek V4 Flash at high speed, ideal for fast, low-cost answers.
 - **Anthropic** — runs Claude, excellent for nuanced reasoning and citation accuracy.
 
 ## Tips for Better Results
