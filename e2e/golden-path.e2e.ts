@@ -47,8 +47,11 @@ test.describe('Nexus Recall — Golden Path', () => {
 		await page.goto('/');
 		await uploadFixture(page);
 
-		// Tab appears immediately
-		await expect(page.getByText('sample.md')).toBeVisible({ timeout: 5_000 });
+		// Tab appears immediately (scope to the tab list — the doc now auto-opens,
+		// so the filename also shows in the viewer header)
+		await expect(page.getByLabel('Open documents').getByText('sample.md')).toBeVisible({
+			timeout: 5_000
+		});
 
 		// Wait for embedding to complete (downloads Transformers.js model on first run)
 		await waitForReady(page);
@@ -70,7 +73,9 @@ test.describe('Nexus Recall — Golden Path', () => {
 		await page.getByRole('button', { name: 'SUMMON SAMPLE' }).click();
 
 		// Tab for dragon-codex.md appears
-		await expect(page.getByText('dragon-codex.md')).toBeVisible({ timeout: 5_000 });
+		await expect(page.getByLabel('Open documents').getByText('dragon-codex.md')).toBeVisible({
+			timeout: 5_000
+		});
 
 		// Wait for indexing to complete
 		await waitForReady(page);
@@ -158,7 +163,9 @@ test.describe('Nexus Recall — Golden Path', () => {
 	test('document tab closes and reverts to empty state', async ({ page }) => {
 		await page.goto('/');
 		await uploadFixture(page);
-		await expect(page.getByText('sample.md')).toBeVisible({ timeout: 5_000 });
+		await expect(page.getByLabel('Open documents').getByText('sample.md')).toBeVisible({
+			timeout: 5_000
+		});
 
 		// Close the tab via the × button
 		await page.locator('.tab .close').click();
