@@ -31,6 +31,7 @@ export async function chunkDocument(
 		: new RecursiveCharacterTextSplitter({ chunkSize: CHUNK_SIZE, chunkOverlap: CHUNK_OVERLAP });
 
 	const chunks: Chunk[] = [];
+
 	for (let i = 0; i < pages.length; i++) {
 		const page = pages[i];
 		const splits = await splitter.splitText(page.text);

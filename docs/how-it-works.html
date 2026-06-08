@@ -1,0 +1,1002 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nexus Recall — How It Works Under the Hood</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-deep: #14080c;
+        --bg-panel: #20101a;
+        --bg-elev: #2c1822;
+        --bg-elev-2: #3c2030;
+        --border-outer: #000000;
+        --border-light: #5e2438;
+        --border-dark: #080306;
+        --border-mid: #180a10;
+        --accent: #e0b040;
+        --accent-dim: #8e6020;
+        --crimson: #c84050;
+        --arcane: #9460e0;
+        --ok: #6fcf7f;
+        --err: #ff3d5a;
+        --text: #f0d8b8;
+        --text-dim: #7a5a48;
+        --text-faint: #4a3a30;
+        --glow: rgba(224, 176, 64, 0.35);
+        --parchment-bg: #322214;
+        --parchment-edge: #4e3520;
+        --parchment-fg: #f0d8b0;
+        --pixel: 'Press Start 2P', monospace;
+        --mono: 'JetBrains Mono', ui-monospace, monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background:
+          radial-gradient(1100px 520px at 82% -10%, rgba(224, 176, 64, 0.1), transparent 60%),
+          radial-gradient(820px 460px at -10% 8%, rgba(148, 96, 224, 0.08), transparent 55%),
+          var(--bg-deep);
+        color: var(--text);
+        font-family: var(--mono);
+        font-size: 14px;
+        line-height: 1.7;
+        -webkit-font-smoothing: antialiased;
+      }
+      /* CRT scanlines — matches the app */
+      body::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 9999;
+        background: repeating-linear-gradient(
+          to bottom,
+          transparent 0,
+          transparent 2px,
+          rgba(0, 0, 0, 0.12) 3px,
+          rgba(0, 0, 0, 0.12) 4px
+        );
+      }
+      .wrap {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 0 22px 120px;
+      }
+      a {
+        color: var(--accent);
+      }
+
+      /* ── Hero ── */
+      header.hero {
+        padding: 80px 22px 48px;
+        text-align: center;
+        border-bottom: 2px solid var(--border-outer);
+        background: linear-gradient(180deg, rgba(44, 24, 34, 0.5), transparent);
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--pixel);
+        font-size: 8px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--accent);
+        box-shadow: inset 0 0 0 2px var(--border-light);
+        padding: 8px 14px;
+        background: var(--bg-panel);
+      }
+      .badge .dot {
+        width: 7px;
+        height: 7px;
+        background: var(--accent);
+        box-shadow: 0 0 8px var(--accent);
+        animation: blink 1.4s steps(2) infinite;
+      }
+      @keyframes blink {
+        0%,
+        49% {
+          opacity: 1;
+        }
+        50%,
+        100% {
+          opacity: 0.3;
+        }
+      }
+      header.hero h1 {
+        font-family: var(--pixel);
+        font-size: clamp(20px, 4.4vw, 36px);
+        margin: 26px 0 16px;
+        line-height: 1.4;
+        color: var(--accent);
+        text-shadow: 0 0 18px var(--glow);
+      }
+      header.hero p.sub {
+        color: var(--text-dim);
+        font-size: 15px;
+        max-width: 660px;
+        margin: 0 auto;
+      }
+      .hero-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: center;
+        margin-top: 34px;
+      }
+      .hero-stat {
+        background: var(--bg-panel);
+        box-shadow: inset 0 0 0 2px var(--border-light);
+        padding: 12px 18px;
+        min-width: 120px;
+      }
+      .hero-stat .n {
+        font-family: var(--pixel);
+        font-size: 11px;
+        color: var(--text);
+      }
+      .hero-stat .l {
+        font-size: 11px;
+        color: var(--text-faint);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-top: 6px;
+      }
+      nav.toc {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+        margin-top: 30px;
+      }
+      nav.toc a {
+        font-family: var(--pixel);
+        font-size: 8px;
+        color: var(--text-dim);
+        text-decoration: none;
+        box-shadow: inset 0 0 0 2px var(--border-light);
+        padding: 8px 11px;
+        background: var(--bg-panel);
+        transition: 0.15s;
+      }
+      nav.toc a:hover {
+        color: var(--accent);
+        box-shadow: inset 0 0 0 2px var(--accent);
+      }
+
+      /* ── Section ── */
+      section {
+        margin-top: 66px;
+      }
+      .eyebrow {
+        font-family: var(--pixel);
+        font-size: 8px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--accent-dim);
+        margin-bottom: 12px;
+      }
+      h2 {
+        font-family: var(--pixel);
+        font-size: clamp(14px, 2.4vw, 20px);
+        margin: 0 0 16px;
+        line-height: 1.5;
+        color: var(--accent);
+      }
+      h3 {
+        font-family: var(--pixel);
+        font-size: 10px;
+        line-height: 1.6;
+        margin: 0 0 10px;
+        color: var(--text);
+      }
+      p.lead {
+        color: var(--text-dim);
+        font-size: 14px;
+        max-width: 760px;
+      }
+
+      .card {
+        background: var(--bg-panel);
+        box-shadow: inset 0 0 0 2px var(--border-light);
+        padding: 22px;
+      }
+      .grid {
+        display: grid;
+        gap: 14px;
+      }
+      .g2 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .g3 {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      @media (max-width: 760px) {
+        .g2,
+        .g3 {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      code.inl {
+        font-family: var(--mono);
+        font-size: 0.92em;
+        background: var(--bg-deep);
+        box-shadow: inset 0 0 0 1px var(--border-mid);
+        border-radius: 3px;
+        padding: 1px 6px;
+        color: var(--accent);
+      }
+
+      /* ── Layer stack ── */
+      .layers {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 22px;
+      }
+      .layer {
+        display: grid;
+        grid-template-columns: 150px 1fr;
+        align-items: center;
+        gap: 16px;
+        box-shadow: inset 0 0 0 2px var(--border-light);
+        border-left: 5px solid var(--lc, var(--accent));
+        padding: 15px 18px;
+        background: var(--bg-panel);
+      }
+      @media (max-width: 620px) {
+        .layer {
+          grid-template-columns: 1fr;
+          gap: 6px;
+        }
+      }
+      .layer .lname {
+        font-family: var(--pixel);
+        font-size: 9px;
+        color: var(--text);
+      }
+      .layer .lpath {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--text-faint);
+        margin-top: 6px;
+      }
+      .layer .ldesc {
+        color: var(--text-dim);
+        font-size: 13.5px;
+      }
+      .arrow-rule {
+        text-align: center;
+        color: var(--text-faint);
+        font-family: var(--pixel);
+        font-size: 9px;
+        line-height: 1.9;
+        margin: 18px 0 0;
+      }
+      .arrow-rule b {
+        color: var(--accent);
+      }
+      .arrow-rule .no {
+        color: var(--crimson);
+      }
+
+      /* ── Flow ── */
+      .flow {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        margin-top: 22px;
+      }
+      .fnode {
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+        position: relative;
+        padding-bottom: 14px;
+      }
+      .fnode:not(:last-child)::before {
+        content: '';
+        position: absolute;
+        left: 17px;
+        top: 38px;
+        bottom: -2px;
+        width: 2px;
+        background: linear-gradient(180deg, var(--accent), var(--border-light));
+      }
+      .fbullet {
+        flex: 0 0 36px;
+        height: 36px;
+        display: grid;
+        place-items: center;
+        font-family: var(--pixel);
+        font-size: 10px;
+        color: var(--bg-deep);
+        background: var(--accent);
+        box-shadow: 0 0 0 4px rgba(224, 176, 64, 0.14);
+        z-index: 1;
+      }
+      .fbody {
+        padding-top: 4px;
+      }
+      .fbody .ftitle {
+        font-family: var(--pixel);
+        font-size: 9px;
+        color: var(--text);
+        line-height: 1.6;
+      }
+      .fbody .fmeta {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--text-faint);
+        margin-top: 6px;
+      }
+      .fbody .fdesc {
+        color: var(--text-dim);
+        font-size: 13.5px;
+        margin-top: 4px;
+      }
+      .seg-embed .fbullet {
+        background: var(--arcane);
+        box-shadow: 0 0 0 4px rgba(148, 96, 224, 0.16);
+      }
+      .seg-server .fbullet {
+        background: var(--crimson);
+        box-shadow: 0 0 0 4px rgba(200, 64, 80, 0.16);
+      }
+
+      /* ── Table ── */
+      .tablewrap {
+        margin-top: 22px;
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13.5px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 11px 13px;
+        border-bottom: 1px solid var(--border-light);
+        vertical-align: top;
+      }
+      th {
+        font-family: var(--pixel);
+        font-size: 8px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+      }
+      td .ev {
+        font-family: var(--mono);
+        color: var(--accent);
+        font-size: 13px;
+      }
+      td .pay {
+        font-family: var(--mono);
+        color: var(--text-faint);
+        font-size: 12px;
+      }
+      tr:hover td {
+        background: rgba(224, 176, 64, 0.04);
+      }
+
+      /* ── Pills ── */
+      .pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .pill {
+        font-family: var(--mono);
+        font-size: 12px;
+        padding: 6px 10px;
+        box-shadow: inset 0 0 0 1px var(--border-light);
+        background: var(--bg-elev);
+        color: var(--text-dim);
+      }
+      .pill b {
+        color: var(--accent);
+      }
+      .pcol {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      /* ── Trace mock ── */
+      .trace-mock {
+        font-family: var(--mono);
+        font-size: 13px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 14px;
+      }
+      .tstep {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 12px;
+        box-shadow: inset 0 0 0 1px var(--border-light);
+        background: var(--bg-elev);
+      }
+      .tdot {
+        width: 8px;
+        height: 8px;
+        flex: 0 0 auto;
+      }
+      .tdot.done {
+        background: var(--ok);
+        box-shadow: 0 0 7px var(--ok);
+      }
+      .tdot.run {
+        background: var(--accent);
+        box-shadow: 0 0 7px var(--accent);
+        animation: blink 1.2s steps(2) infinite;
+      }
+      .tstep .tlbl {
+        color: var(--text);
+      }
+      .tstep .tdur {
+        margin-left: auto;
+        color: var(--text-faint);
+      }
+
+      ul.clean {
+        list-style: none;
+        padding: 0;
+        margin: 12px 0 0;
+      }
+      ul.clean li {
+        padding: 9px 0 9px 24px;
+        position: relative;
+        color: var(--text-dim);
+        border-bottom: 1px solid var(--border-mid);
+        font-size: 13.5px;
+      }
+      ul.clean li::before {
+        content: '▹';
+        position: absolute;
+        left: 2px;
+        color: var(--accent);
+      }
+      ul.clean li b {
+        color: var(--text);
+      }
+      ul.clean li:last-child {
+        border-bottom: none;
+      }
+
+      .callout {
+        border-left: 4px solid var(--accent);
+        background: rgba(224, 176, 64, 0.06);
+        padding: 14px 18px;
+        color: var(--text-dim);
+        font-size: 13.5px;
+        margin-top: 18px;
+      }
+      .callout b {
+        color: var(--text);
+      }
+
+      footer {
+        margin-top: 84px;
+        padding-top: 26px;
+        border-top: 2px solid var(--border-outer);
+        color: var(--text-faint);
+        font-size: 12px;
+        text-align: center;
+        line-height: 1.9;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <span class="badge"><span class="dot"></span> Technical Deep-Dive</span>
+      <h1>NEXUS RECALL</h1>
+      <p class="sub">
+        A browser-first RAG explorer. Drop in scrolls (PDF / Markdown), embed them locally, and
+        question them through the Oracle — answers stream with inline citations you can click back to
+        the source. Here's how it works under the hood.
+      </p>
+      <div class="hero-stats">
+        <div class="hero-stat"><div class="n">SvelteKit</div><div class="l">Svelte 5 runes</div></div>
+        <div class="hero-stat"><div class="n">Local</div><div class="l">Transformers.js</div></div>
+        <div class="hero-stat"><div class="n">IndexedDB</div><div class="l">Vector store</div></div>
+        <div class="hero-stat"><div class="n">SSE</div><div class="l">Token streaming</div></div>
+        <div class="hero-stat"><div class="n">PWA</div><div class="l">Offline-ready</div></div>
+      </div>
+      <nav class="toc">
+        <a href="#overview">Overview</a>
+        <a href="#layers">Layers</a>
+        <a href="#ingest">Ingestion</a>
+        <a href="#query">Query</a>
+        <a href="#protocol">SSE Protocol</a>
+        <a href="#guards">Guardrails</a>
+        <a href="#knobs">Knobs</a>
+        <a href="#evals">Evals</a>
+      </nav>
+    </header>
+
+    <div class="wrap">
+      <!-- OVERVIEW -->
+      <section id="overview">
+        <div class="eyebrow">01 — The Big Picture</div>
+        <h2>What is Nexus Recall?</h2>
+        <p class="lead">
+          A two-pane app: the <b>Tome</b> (a document viewer) on one side and the <b>Oracle</b> (a
+          streaming RAG chat) on the other. Everything up to the LLM call happens
+          <b>in your browser</b> — parsing, chunking, embedding and vector search — so a document
+          never leaves your machine unless you opt in to cloud embeddings. Only the final question +
+          the retrieved passages are sent to the server to generate an answer.
+        </p>
+        <div class="grid g3" style="margin-top: 22px">
+          <div class="card">
+            <h3>🔒 Local-first</h3>
+            <p style="color: var(--text-dim); font-size: 13.5px; margin: 0">
+              Embeddings run in a Web Worker via Transformers.js. The vector store is IndexedDB.
+              Documents survive a refresh and work offline once indexed.
+            </p>
+          </div>
+          <div class="card">
+            <h3>⚡ Streaming</h3>
+            <p style="color: var(--text-dim); font-size: 13.5px; margin: 0">
+              Answers stream token-by-token over Server-Sent Events. Reasoning is separated from the
+              reply; citations and cost arrive as metadata.
+            </p>
+          </div>
+          <div class="card">
+            <h3>🧱 Layered</h3>
+            <p style="color: var(--text-dim); font-size: 13.5px; margin: 0">
+              UI, API, and RAG/AI live in separate folders with a one-way import rule. The RAG core
+              is testable with no browser and no network.
+            </p>
+          </div>
+        </div>
+        <div class="card" style="margin-top: 14px">
+          <h3>The stack</h3>
+          <div class="pills">
+            <span class="pill"><b>SvelteKit 2</b> · Svelte 5</span>
+            <span class="pill"><b>TypeScript</b></span>
+            <span class="pill"><b>Vercel AI SDK</b> · streamText</span>
+            <span class="pill"><b>Transformers.js</b> · MiniLM</span>
+            <span class="pill"><b>LangChain.js</b> · splitters</span>
+            <span class="pill"><b>pdfjs-dist</b></span>
+            <span class="pill"><b>idb</b> · IndexedDB</span>
+            <span class="pill"><b>Fireworks.ai</b> / <b>Claude</b></span>
+            <span class="pill"><b>Zod</b></span>
+            <span class="pill"><b>Vitest</b> + <b>Playwright</b></span>
+            <span class="pill"><b>Tailwind v4</b></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- LAYERS -->
+      <section id="layers">
+        <div class="eyebrow">02 — Architecture</div>
+        <h2>Layers, one rule</h2>
+        <p class="lead">
+          Code is organized by responsibility, and dependencies flow one way. The UI knows the API;
+          the API knows the RAG/AI core; the core knows neither HTTP nor Svelte.
+        </p>
+        <div class="layers">
+          <div class="layer" style="--lc: var(--amber, #e0b040)">
+            <div>
+              <div class="lname">UI</div>
+              <div class="lpath">routes/ · components/</div>
+            </div>
+            <div class="ldesc">
+              The split-pane view, <code class="inl">ChatPanel</code> (an
+              <code class="inl">@ai-sdk/svelte</code> <code class="inl">Chat</code>), and
+              <code class="inl">DocumentViewer</code> with highlight overlays. Reads streamed
+              metadata for citations + cost.
+            </div>
+          </div>
+          <div class="layer" style="--lc: var(--ok)">
+            <div>
+              <div class="lname">State</div>
+              <div class="lpath">lib/stores/</div>
+            </div>
+            <div class="ldesc">
+              The ingestion <b>state machine</b>, API keys, theme, reasoning toggle, toasts. Svelte
+              stores — small and single-purpose, no god-files.
+            </div>
+          </div>
+          <div class="layer" style="--lc: var(--arcane)">
+            <div>
+              <div class="lname">RAG / AI</div>
+              <div class="lpath">lib/rag/</div>
+            </div>
+            <div class="ldesc">
+              <code class="inl">parser → chunker → embeddings → vector-store</code>. Pure,
+              browser-side, framework-agnostic — unit-tested with a mock worker and
+              <code class="inl">fake-indexeddb</code>.
+            </div>
+          </div>
+          <div class="layer" style="--lc: var(--crimson)">
+            <div>
+              <div class="lname">API</div>
+              <div class="lpath">routes/api/ · lib/server/</div>
+            </div>
+            <div class="ldesc">
+              The HTTP boundary: key resolution, Zod validation, provider selection, the reranker
+              singleton, context assembly, and the streaming interceptor — split into focused
+              <code class="inl">chat.*.ts</code> modules.
+            </div>
+          </div>
+        </div>
+        <div class="arrow-rule">
+          UI <b>→</b> API <b>→</b> RAG/AI &nbsp;·&nbsp; <span class="no">never the reverse</span>
+        </div>
+        <div class="callout">
+          <b>Why it matters:</b> the RAG core runs in Node tests with no browser; the API modules are
+          small enough to read in one sitting; a UI rewrite can't reach into model code. Constants
+          (<code class="inl">CHUNK_SIZE</code>, <code class="inl">TOP_K</code>,
+          <code class="inl">EMBEDDING_DIMS</code>, <code class="inl">MODEL_IDS</code>) live in
+          <code class="inl">as const</code> objects so logic never depends on raw literals.
+        </div>
+      </section>
+
+      <!-- INGESTION -->
+      <section id="ingest">
+        <div class="eyebrow">03 — Getting Scrolls In</div>
+        <h2>The ingestion pipeline</h2>
+        <p class="lead">
+          Drop a file and a per-document state machine carries it from
+          <code class="inl">pending → indexing → embedding → ready</code> (or
+          <code class="inl">error</code>) — all in the browser. Progress for chunking and embedding
+          is tracked separately so the UI stays granular.
+        </p>
+        <div class="card flow">
+          <div class="fnode">
+            <div class="fbullet">1</div>
+            <div class="fbody">
+              <div class="ftitle">Parse</div>
+              <div class="fmeta">lib/rag/parser.ts · pdfjs-dist / markdown</div>
+              <div class="fdesc">
+                PDFs are reconstructed into paragraphs from text-run geometry (Y-gaps, hyphen joins);
+                Markdown has its frontmatter stripped.
+              </div>
+            </div>
+          </div>
+          <div class="fnode">
+            <div class="fbullet">2</div>
+            <div class="fbody">
+              <div class="ftitle">Chunk</div>
+              <div class="fmeta">lib/rag/chunker.ts · LangChain splitters</div>
+              <div class="fdesc">
+                Markdown-aware recursive split at <b>800</b> chars with <b>120</b> overlap; the
+                nearest heading is prepended for context. Each chunk gets a deterministic
+                <code class="inl">source::pN::cN</code> id.
+              </div>
+            </div>
+          </div>
+          <div class="fnode seg-embed">
+            <div class="fbullet">3</div>
+            <div class="fbody">
+              <div class="ftitle">Embed (Web Worker)</div>
+              <div class="fmeta">lib/rag/embedding.worker.ts · Transformers.js</div>
+              <div class="fdesc">
+                A singleton MiniLM pipeline (<b>384</b>-dim) runs off the main thread. First load
+                downloads weights (10–60s) with a progress bar; the model is reused after that.
+              </div>
+            </div>
+          </div>
+          <div class="fnode seg-embed">
+            <div class="fbullet">4</div>
+            <div class="fbody">
+              <div class="ftitle">Store</div>
+              <div class="fmeta">lib/rag/vector-store.ts · IndexedDB (idb)</div>
+              <div class="fdesc">
+                Vectors + chunks are upserted into the <code class="inl">nexus-recall</code> DB and
+                rehydrated on startup, so a refresh keeps your library.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- QUERY -->
+      <section id="query">
+        <div class="eyebrow">04 — Asking the Oracle</div>
+        <h2>The query pipeline</h2>
+        <p class="lead">
+          A question is embedded and searched locally, then the candidates go to the server to be
+          reranked and answered. Colors mark the segment:
+          <span style="color: var(--arcane)">browser</span>,
+          <span style="color: var(--crimson)">server</span>.
+        </p>
+        <div class="card flow">
+          <div class="fnode seg-embed">
+            <div class="fbullet">1</div>
+            <div class="fbody">
+              <div class="ftitle">Embed the question &amp; vector-search</div>
+              <div class="fmeta">ChatPanel → embeddings.embedText → vector-store.similaritySearch</div>
+              <div class="fdesc">
+                Cosine similarity over IndexedDB returns the top candidates, optionally scoped to the
+                active document (<code class="inl">sourceFilter</code>) to avoid cross-doc bleed.
+              </div>
+            </div>
+          </div>
+          <div class="fnode seg-server">
+            <div class="fbullet">2</div>
+            <div class="fbody">
+              <div class="ftitle">Server pipeline</div>
+              <div class="fmeta">routes/api/chat/+server.ts</div>
+              <div class="fdesc">
+                Linear gauntlet: <b>resolve keys → Zod validate → select provider → rerank → assemble
+                context</b>. Any failure short-circuits before a token is generated.
+              </div>
+            </div>
+          </div>
+          <div class="fnode seg-server">
+            <div class="fbullet">3</div>
+            <div class="fbody">
+              <div class="ftitle">Cross-encoder rerank</div>
+              <div class="fmeta">lib/server/reranker.ts · ms-marco-MiniLM-L-6-v2</div>
+              <div class="fdesc">
+                A module-level singleton (warmed by <code class="inl">/api/warmup</code>) reorders
+                candidates by relevance; on any error it falls back to vector order. Top
+                <b>8</b> become the context.
+              </div>
+            </div>
+          </div>
+          <div class="fnode seg-server">
+            <div class="fbullet">4</div>
+            <div class="fbody">
+              <div class="ftitle">Assemble context &amp; stream</div>
+              <div class="fmeta">chat.context.ts + chat.stream.ts · streamText</div>
+              <div class="fdesc">
+                Chunks become numbered <code class="inl">&lt;source n&gt;</code> blocks; the Oracle
+                answers with inline <code class="inl">[n]</code> citations. Reasoning is intercepted;
+                cost is computed on finish.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="margin-top: 14px">
+          <h3>What the Oracle streams back</h3>
+          <p style="color: var(--text-dim); font-size: 13.5px">
+            Reasoning tokens are buffered and forwarded as <code class="inl">message-metadata</code>
+            (shown in a separate panel, never in the answer). Citations are derived deterministically
+            from the reranked chunks — no second LLM call.
+          </p>
+          <div class="trace-mock">
+            <div class="tstep">
+              <span class="tdot done"></span><span class="tlbl">🔎 vector search · 10 hits</span
+              ><span class="tdur">0.1s</span>
+            </div>
+            <div class="tstep">
+              <span class="tdot done"></span><span class="tlbl">⚖ rerank → top 8</span
+              ><span class="tdur">0.4s</span>
+            </div>
+            <div class="tstep">
+              <span class="tdot done"></span><span class="tlbl">🧠 reasoning</span
+              ><span class="tdur">0.6s</span>
+            </div>
+            <div class="tstep">
+              <span class="tdot run"></span><span class="tlbl">✦ channeling the answer…</span
+              ><span class="tdur">streaming</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PROTOCOL -->
+      <section id="protocol">
+        <div class="eyebrow">05 — The Wire Format</div>
+        <h2>The streaming protocol</h2>
+        <p class="lead">
+          The server returns an AI SDK v6 UI-message stream (SSE,
+          <code class="inl">data: &lt;json&gt;\n\n</code>, header
+          <code class="inl">x-vercel-ai-ui-message-stream: v1</code>). A server-side interceptor sits
+          in the middle, reshaping a few chunk types before they reach the client.
+        </p>
+        <div class="tablewrap card">
+          <table>
+            <thead>
+              <tr>
+                <th>Chunk</th>
+                <th>Handled how</th>
+                <th>Payload</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="ev">message-metadata</span></td>
+                <td>Citations sent up-front; reasoning + cost merged in later</td>
+                <td><span class="pay">citations, reasoning?, usage?, costUsd?, truncated?</span></td>
+              </tr>
+              <tr>
+                <td><span class="ev">text-delta</span></td>
+                <td>Forwarded as-is — the visible answer</td>
+                <td><span class="pay">delta, id</span></td>
+              </tr>
+              <tr>
+                <td><span class="ev">reasoning-delta</span></td>
+                <td>Buffered, flushed every <b>6</b> tokens as metadata — never shown in the bubble</td>
+                <td><span class="pay">delta</span></td>
+              </tr>
+              <tr>
+                <td><span class="ev">reasoning-end</span></td>
+                <td>Final reasoning flush</td>
+                <td><span class="pay">—</span></td>
+              </tr>
+              <tr>
+                <td><span class="ev">finish</span></td>
+                <td>Compute usage + USD cost server-side, log, emit metadata, then forward</td>
+                <td><span class="pay">finishReason (stop · length · error)</span></td>
+              </tr>
+              <tr>
+                <td><span class="ev">finish · error</span></td>
+                <td>Swapped for a safe, in-character message ("the Oracle has gone silent")</td>
+                <td><span class="pay">—</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout">
+          <b>Why intercept?</b> Letting reasoning events reach the AI SDK client directly wedges it in
+          a streaming state. The interceptor (<code class="inl">chat.stream.ts</code>) consumes the
+          raw stream, narrows the chunks it cares about with type guards, and re-emits clean
+          metadata — keeping chain-of-thought out of the answer and attaching cost on the way out.
+        </div>
+      </section>
+
+      <!-- GUARDRAILS -->
+      <section id="guards">
+        <div class="eyebrow">06 — Safety &amp; Boundaries</div>
+        <h2>Guardrails</h2>
+        <div class="grid g2">
+          <div class="card">
+            <h3>🛡 Prompt-injection</h3>
+            <p style="color: var(--text-dim); font-size: 13.5px">
+              Retrieved text is wrapped in <code class="inl">&lt;source n&gt;</code> tags and the
+              system prompt treats it as untrusted <b>data</b>. A scroll that says "ignore previous
+              instructions" is disregarded — and there's a unit test that proves the delimiting.
+            </p>
+          </div>
+          <div class="card">
+            <h3>🔑 Key handling</h3>
+            <p style="color: var(--text-dim); font-size: 13.5px">
+              LLM keys travel as request <b>headers</b>, resolved server-side (user → demo env →
+              401) and never logged. Cloud-embedding keys are an explicit client-side opt-in
+              (documented in an ADR).
+            </p>
+          </div>
+          <div class="card">
+            <h3>🧪 Input boundary</h3>
+            <p style="color: var(--text-dim); font-size: 13.5px">
+              Zod caps the question at <b>2000</b> chars and the payload at <b>200</b> chunks; null
+              bytes and control characters are stripped before anything reaches the model.
+            </p>
+          </div>
+          <div class="card">
+            <h3>🔀 Provider fallback</h3>
+            <p style="color: var(--text-dim); font-size: 13.5px">
+              <code class="inl">resolveProvider</code> expresses primary → fallback → error in code:
+              an explicit pick is honored if its key exists, otherwise Fireworks → Claude → a helpful
+              error.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- KNOBS -->
+      <section id="knobs">
+        <div class="eyebrow">07 — The Tuning Knobs</div>
+        <h2>Key numbers</h2>
+        <p class="lead">
+          No magic numbers scattered through the code — every constant lives in one module or an
+          <code class="inl">as const</code> object, so a change is a one-line edit (and re-run the
+          evals).
+        </p>
+        <div class="grid g3" style="margin-top: 22px">
+          <div class="card">
+            <h3 style="color: var(--accent)">Chunking</h3>
+            <div class="pills pcol">
+              <span class="pill">size <b>800</b></span>
+              <span class="pill">overlap <b>120</b></span>
+              <span class="pill">id <b>source::pN::cN</b></span>
+            </div>
+          </div>
+          <div class="card">
+            <h3 style="color: var(--arcane)">Embeddings</h3>
+            <div class="pills pcol">
+              <span class="pill">MiniLM <b>384</b></span>
+              <span class="pill">MPNet <b>768</b></span>
+              <span class="pill">OpenAI <b>1536</b></span>
+            </div>
+          </div>
+          <div class="card">
+            <h3 style="color: var(--ok)">Retrieval</h3>
+            <div class="pills pcol">
+              <span class="pill">search <b>10</b></span>
+              <span class="pill">rerank top-k <b>8</b></span>
+              <span class="pill">ctx cap <b>24k</b> chars</span>
+            </div>
+          </div>
+          <div class="card">
+            <h3 style="color: var(--accent)">Generation</h3>
+            <div class="pills pcol">
+              <span class="pill">max output <b>1024</b></span>
+              <span class="pill">reasoning flush <b>6</b></span>
+              <span class="pill">question cap <b>2000</b></span>
+            </div>
+          </div>
+          <div class="card">
+            <h3 style="color: var(--crimson)">Models</h3>
+            <div class="pills pcol">
+              <span class="pill">deepseek-v4-flash</span>
+              <span class="pill">claude-sonnet-4-6</span>
+              <span class="pill">rerank: ms-marco-MiniLM</span>
+            </div>
+          </div>
+          <div class="card">
+            <h3 style="color: var(--accent)">Cost /1M tok</h3>
+            <div class="pills pcol">
+              <span class="pill">Fireworks <b>$0.22</b> / <b>$0.88</b></span>
+              <span class="pill">Claude <b>$3</b> / <b>$15</b></span>
+              <span class="pill">shown per answer</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- EVALS -->
+      <section id="evals">
+        <div class="eyebrow">08 — Does the AI Actually Work?</div>
+        <h2>Evaluation</h2>
+        <p class="lead">
+          Unit and E2E tests verify the <i>code</i> works; evals verify the <i>retrieval</i> works.
+          <code class="inl">pnpm eval</code> runs offline against <b>20</b> ground-truth Q&amp;A
+          pairs and gates the build.
+        </p>
+        <div class="grid g2">
+          <div class="card">
+            <h3>📏 Retrieval (free, in CI)</h3>
+            <ul class="clean">
+              <li><b>Recall@k</b> — are the right chunks in the top k? (BM25, no LLM)</li>
+              <li><b>MRR</b> — is the best chunk ranked high?</li>
+              <li>Gate: <b>recall@3 ≥ 0.80</b> — a PR touching chunking / context / embeddings runs it</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>⚖ Generation (LLM-as-judge)</h3>
+            <ul class="clean">
+              <li><b>Faithfulness</b> — is every claim grounded in the context?</li>
+              <li>Gate: <b>faithfulness ≥ 0.70</b> (sampled; needs an API key)</li>
+              <li>Scores append to <code class="inl">evals/scores.json</code> — a flat history is a cheap regression detector</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout">
+          <b>The discipline:</b> never ship a prompt, chunking, or embedding-model change without
+          re-running evals — they look like refactors but silently move output quality.
+        </div>
+      </section>
+
+      <footer>
+        Nexus Recall — browser-first RAG explorer with local embeddings, reranking &amp; streaming
+        citations.<br />
+        Generated technical overview · SvelteKit · Transformers.js · Vercel AI SDK · Server-Sent
+        Events.
+      </footer>
+    </div>
+  </body>
+</html>

@@ -1,5 +1,5 @@
 import { env } from '$env/dynamic/private';
-import type { Provider } from './chat.models';
+import type { Provider } from '$lib/server/config';
 
 // ── User-facing messages ───────────────────────────────────────────────────────
 
@@ -18,6 +18,15 @@ export interface ResolvedKeys {
 	anthropicKey: string;
 	fireworksKey: string;
 }
+
+/** Per-provider: which resolved-keys field gates it, and the error if it's missing. */
+const PROVIDER_KEY = {
+	anthropic: { field: 'anthropicKey', missing: MESSAGES.anthropicKeyMissing },
+	fireworks: { field: 'fireworksKey', missing: MESSAGES.fireworksKeyMissing }
+} as const satisfies Record<Provider, { field: keyof ResolvedKeys; missing: string }>;
+
+/** Order tried when no provider is explicitly requested. */
+const PROVIDER_FALLBACK: readonly Provider[] = ['fireworks', 'anthropic'];
 
 // ── Key resolution ─────────────────────────────────────────────────────────────
 
@@ -41,14 +50,25 @@ export function resolveKeys(request: Request): ResolvedKeys | null {
 }
 
 /**
- * Returns an error message string if the selected provider lacks a key,
- * or null when the required key is present.
+ * Resolves which provider to actually call, expressing the fallback chain in
+ * code rather than a runbook:
+ *
+ *   • Explicit request → honored, but only if its key is present (otherwise a
+ *     helpful "add the key in Settings" error, so the UI's VIA toggle is clear).
+ *   • No request → primary (Fireworks) → fallback (Anthropic) → error.
+ *
+ * Runtime model failures (bad key, provider outage) are caught separately by
+ * the stream's onError and surfaced as an SSE error frame.
  */
-export function assertProviderKey(
-	provider: Provider | undefined,
+export function resolveProvider(
+	requested: Provider | undefined,
 	keys: ResolvedKeys
-): string | null {
-	if (provider === 'anthropic' && !keys.anthropicKey) return MESSAGES.anthropicKeyMissing;
-	if (provider !== 'anthropic' && !keys.fireworksKey) return MESSAGES.fireworksKeyMissing;
-	return null;
+): { provider: Provider } | { error: string } {
+	if (requested) {
+		const { field, missing } = PROVIDER_KEY[requested];
+		return keys[field] ? { provider: requested } : { error: missing };
+	}
+	// No explicit provider — try the fallback chain.
+	const available = PROVIDER_FALLBACK.find((p) => keys[PROVIDER_KEY[p].field]);
+	return available ? { provider: available } : { error: MESSAGES.keysRequired };
 }

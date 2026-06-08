@@ -4,7 +4,8 @@ import { get } from 'svelte/store';
 vi.mock('$lib/rag/parser', () => ({
 	parseFile: vi.fn(),
 	parsePdf: vi.fn(),
-	parseMarkdown: vi.fn()
+	parseMarkdown: vi.fn(),
+	ACCEPTED_EXTENSIONS: ['.pdf', '.md', '.markdown']
 }));
 vi.mock('$lib/rag/chunker', () => ({ chunkDocument: vi.fn() }));
 vi.mock('$lib/rag/embeddings', () => ({
@@ -18,6 +19,7 @@ vi.mock('$lib/rag/vector-store', () => ({
 	deleteDocument: vi.fn(),
 	listDocuments: vi.fn(),
 	getChunksBySource: vi.fn(),
+	sweepOrphanedChunks: vi.fn(),
 	similaritySearch: vi.fn(),
 	cosineSimilarity: vi.fn()
 }));

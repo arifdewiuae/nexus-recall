@@ -25,9 +25,7 @@ vite.config.ts.timestamp-*
 test-results
 playwright-report
 
-# Evals — generated output, not source
-evals/scores.json
+# Note: evals/scores.json IS committed — its flat history is a cheap
+# regression detector (see AI_Web_App_Checklist §16).
 
-# Local planning docs
-\# RAG Document Explorer with Intelligent.md
 .env*.local

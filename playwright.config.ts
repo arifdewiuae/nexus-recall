@@ -3,9 +3,17 @@ import { defineConfig } from '@playwright/test';
 const CI = !!process.env.CI;
 
 export default defineConfig({
+	// Golden-path tests do REAL in-browser embedding (a ~25s model download per
+	// fresh context), so the 30s default test timeout is too tight once a test
+	// also chats / clicks. waitForReady already budgets 90s — match it here.
+	timeout: 120_000,
+	// Embedding tests download the Transformers.js model from the HuggingFace CDN
+	// at runtime; a slow/unreachable CDN times out a whole batch of tests. Retry
+	// in CI so a transient network blip doesn't fail the run.
+	retries: CI ? 2 : 0,
 	webServer: CI
-		? { command: 'npm run preview', port: 4173, reuseExistingServer: false }
-		: { command: 'npm run dev', url: 'http://localhost:5173', reuseExistingServer: true },
+		? { command: 'pnpm run preview', port: 4173, reuseExistingServer: false }
+		: { command: 'pnpm run dev', url: 'http://localhost:5173', reuseExistingServer: true },
 	use: {
 		baseURL: CI ? 'http://localhost:4173' : 'http://localhost:5173',
 		launchOptions: {

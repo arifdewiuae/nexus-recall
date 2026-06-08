@@ -2,6 +2,8 @@
 // downloaded and loaded exactly once per server process, regardless of which
 // route triggers it first (warmup or chat).
 
+import { RERANKER_MODEL_ID } from './config';
+
 export interface RerankCandidate {
 	id: string;
 	[key: string]: unknown;
@@ -15,6 +17,11 @@ type RerankPipeline = (inputs: RerankInput[]) => Promise<Array<{ score: number; 
 let _pipeline: RerankPipeline | null = null;
 let _initPromise: Promise<void> | null = null;
 
+/** Whether the reranker pipeline has finished loading (for /api/health). */
+export function isRerankerWarm(): boolean {
+	return _pipeline !== null;
+}
+
 /**
  * Download and load the cross-encoder pipeline.  Safe to call multiple times —
  * concurrent callers all await the same promise, so the model is never loaded twice.
@@ -26,7 +33,8 @@ export async function initReranker(): Promise<void> {
 	_initPromise = (async () => {
 		const { pipeline, env } = await import('@xenova/transformers');
 		env.allowLocalModels = false;
-		const p = await pipeline('text-classification', 'cross-encoder/ms-marco-MiniLM-L-6-v2');
+
+		const p = await pipeline('text-classification', RERANKER_MODEL_ID);
 		_pipeline = p as unknown as RerankPipeline;
 	})();
 
@@ -42,14 +50,17 @@ export async function tryRerank<T extends RerankCandidate>(
 	candidates: T[]
 ): Promise<T[]> {
 	if (candidates.length <= 1) return candidates;
+
 	try {
 		await initReranker();
 		if (!_pipeline) return candidates;
+
 		const inputs: RerankInput[] = candidates.map((c) => ({
 			text: query,
 			text_pair: String(c.text ?? '')
 		}));
 		const results = await _pipeline(inputs);
+
 		return candidates
 			.map((c, i) => ({ c, score: results[i]?.score ?? 0 }))
 			.sort((a, b) => b.score - a.score)

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { apiKeys } from '$lib/stores/apiKeys';
+	import { ICON_SIZE, ICON_NAME } from '$lib/ui/tokens';
 	import PixelIcon from '$lib/components/PixelIcon.svelte';
 
 	interface Props {
@@ -7,6 +8,13 @@
 	}
 
 	let { open = $bindable() }: Props = $props();
+
+	/** Where each provider issues API keys — shown as the "↗ GET KEY" links. */
+	const KEY_CONSOLE_URLS = {
+		anthropic: 'https://console.anthropic.com/settings/keys',
+		fireworks: 'https://fireworks.ai/account/api-keys',
+		openai: 'https://platform.openai.com/api-keys'
+	} as const;
 
 	let anthropicKey = $state($apiKeys.anthropicKey);
 	let fireworksKey = $state($apiKeys.fireworksKey);
@@ -61,10 +69,10 @@
 		<div class="modal">
 			<div class="modal-header">
 				<span class="modal-title" style="display:inline-flex;align-items:center;gap:6px"
-					><PixelIcon name="gear" size={10} /> API KEYS</span
+					><PixelIcon name={ICON_NAME.gear} size={ICON_SIZE.sm} /> API KEYS</span
 				>
 				<button class="modal-close" onclick={() => (open = false)} aria-label="Close settings"
-					><PixelIcon name="close" size={12} /></button
+					><PixelIcon name={ICON_NAME.close} size={ICON_SIZE.md} /></button
 				>
 			</div>
 
@@ -77,11 +85,9 @@
 				<div class="field">
 					<label class="field-label" for="anthropic-key">
 						ANTHROPIC KEY
-						<a
-							href="https://console.anthropic.com/settings/keys"
-							target="_blank"
-							rel="noopener"
-							class="field-link">↗ GET KEY</a
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- external provider URL -->
+						<a href={KEY_CONSOLE_URLS.anthropic} target="_blank" rel="noopener" class="field-link"
+							>↗ GET KEY</a
 						>
 					</label>
 					<div class="field-row">
@@ -98,7 +104,10 @@
 							class="eye-btn"
 							onclick={() => (showAnthropic = !showAnthropic)}
 							aria-label={showAnthropic ? 'Hide key' : 'Show key'}
-							><PixelIcon name={showAnthropic ? 'eye-closed' : 'eye-open'} size={14} /></button
+							><PixelIcon
+								name={showAnthropic ? ICON_NAME.eyeClosed : ICON_NAME.eyeOpen}
+								size={ICON_SIZE.lg}
+							/></button
 						>
 					</div>
 				</div>
@@ -106,11 +115,9 @@
 				<div class="field">
 					<label class="field-label" for="fireworks-key">
 						FIREWORKS KEY
-						<a
-							href="https://fireworks.ai/account/api-keys"
-							target="_blank"
-							rel="noopener"
-							class="field-link">↗ GET KEY</a
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- external provider URL -->
+						<a href={KEY_CONSOLE_URLS.fireworks} target="_blank" rel="noopener" class="field-link"
+							>↗ GET KEY</a
 						>
 					</label>
 					<div class="field-row">
@@ -127,7 +134,10 @@
 							class="eye-btn"
 							onclick={() => (showFireworks = !showFireworks)}
 							aria-label={showFireworks ? 'Hide key' : 'Show key'}
-							><PixelIcon name={showFireworks ? 'eye-closed' : 'eye-open'} size={14} /></button
+							><PixelIcon
+								name={showFireworks ? ICON_NAME.eyeClosed : ICON_NAME.eyeOpen}
+								size={ICON_SIZE.lg}
+							/></button
 						>
 					</div>
 				</div>
@@ -135,11 +145,9 @@
 				<div class="field">
 					<label class="field-label" for="openai-key">
 						OPENAI KEY <span class="field-optional">(cloud embeddings)</span>
-						<a
-							href="https://platform.openai.com/api-keys"
-							target="_blank"
-							rel="noopener"
-							class="field-link">↗ GET KEY</a
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- external provider URL -->
+						<a href={KEY_CONSOLE_URLS.openai} target="_blank" rel="noopener" class="field-link"
+							>↗ GET KEY</a
 						>
 					</label>
 					<div class="field-row">
@@ -156,7 +164,10 @@
 							class="eye-btn"
 							onclick={() => (showOpenai = !showOpenai)}
 							aria-label={showOpenai ? 'Hide key' : 'Show key'}
-							><PixelIcon name={showOpenai ? 'eye-closed' : 'eye-open'} size={14} /></button
+							><PixelIcon
+								name={showOpenai ? ICON_NAME.eyeClosed : ICON_NAME.eyeOpen}
+								size={ICON_SIZE.lg}
+							/></button
 						>
 					</div>
 				</div>
@@ -217,7 +228,7 @@
 	}
 
 	.modal-title {
-		font-family: 'Press Start 2P', monospace;
+		font-family: var(--font-pixel);
 		font-size: 9px;
 		color: var(--accent);
 		flex: 1;
@@ -247,7 +258,7 @@
 	}
 
 	.modal-hint {
-		font-family: 'Press Start 2P', monospace;
+		font-family: var(--font-pixel);
 		font-size: 7px;
 		color: var(--text-dim);
 		line-height: 1.8;
@@ -261,7 +272,7 @@
 	}
 
 	.field-label {
-		font-family: 'Press Start 2P', monospace;
+		font-family: var(--font-pixel);
 		font-size: 7px;
 		color: var(--text-dim);
 		display: flex;
@@ -295,7 +306,7 @@
 		border: none;
 		box-shadow: inset 0 0 0 2px var(--border-outer);
 		color: var(--text);
-		font-family: 'Press Start 2P', monospace;
+		font-family: var(--font-pixel);
 		font-size: 8px;
 		padding: 8px 10px;
 		outline: none;

@@ -1,12 +1,19 @@
 import { writable } from 'svelte/store';
 
-export type Theme = 'dark' | 'light';
+export const THEME = {
+	dark: 'dark',
+	light: 'light'
+} as const;
+
+export type Theme = (typeof THEME)[keyof typeof THEME];
+
+const STORAGE_KEY = 'theme';
 
 function createThemeStore() {
 	const initial: Theme =
 		typeof localStorage !== 'undefined'
-			? ((localStorage.getItem('theme') as Theme) ?? 'dark')
-			: 'dark';
+			? ((localStorage.getItem(STORAGE_KEY) as Theme) ?? THEME.dark)
+			: THEME.dark;
 
 	const { subscribe, update } = writable<Theme>(initial);
 
@@ -14,8 +21,8 @@ function createThemeStore() {
 		subscribe,
 		toggle() {
 			update((t) => {
-				const next: Theme = t === 'dark' ? 'light' : 'dark';
-				if (typeof localStorage !== 'undefined') localStorage.setItem('theme', next);
+				const next: Theme = t === THEME.dark ? THEME.light : THEME.dark;
+				if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, next);
 				if (typeof document !== 'undefined') document.documentElement.dataset.theme = next;
 				return next;
 			});

@@ -3,6 +3,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { assembleContext, buildCitations } from './chat.context';
 import { ChatRequestSchema } from './chat.schema';
 import { interceptReasoning } from './chat.stream';
+import { resolveProvider } from './chat.keys';
+import { estimateCostUsd, formatCostUsd } from './chat.pricing';
 import { createLogger } from './chat.logger';
 import type { ChunkRecord, Citation } from './chat.schema';
 
@@ -27,32 +29,46 @@ function makeChunk(overrides: Partial<ChunkRecord> & { text: string }): ChunkRec
 // ── assembleContext ────────────────────────────────────────────────────────────
 
 describe('assembleContext', () => {
-	it('numbers chunks and includes source', () => {
+	it('numbers sources and includes the document name', () => {
 		const chunks: ChunkRecord[] = [
 			makeChunk({ source: 'a.pdf', text: 'alpha' }),
 			makeChunk({ source: 'b.pdf', text: 'beta' })
 		];
 		const ctx = assembleContext(chunks);
-		expect(ctx).toContain('[1]');
-		expect(ctx).toContain('[2]');
-		expect(ctx).toContain('Source: a.pdf');
+		expect(ctx).toContain('<source n="1" doc="a.pdf">');
+		expect(ctx).toContain('<source n="2" doc="b.pdf">');
 		expect(ctx).toContain('alpha');
 		expect(ctx).toContain('beta');
 	});
 
-	it('includes page number when present', () => {
+	it('includes page number as an attribute when present', () => {
 		const chunks = [makeChunk({ source: 'x.pdf', pageNumber: 7, text: 'hello' })];
-		expect(assembleContext(chunks)).toContain('page 7');
+		expect(assembleContext(chunks)).toContain('page="7"');
 	});
 
-	it('omits page when absent', () => {
+	it('omits the page attribute when absent', () => {
 		const chunks = [makeChunk({ source: 'x.pdf', text: 'hello' })];
-		expect(assembleContext(chunks)).not.toContain('page');
+		expect(assembleContext(chunks)).not.toContain('page=');
 	});
 
-	it('separates chunks with dividers', () => {
+	it('wraps every chunk in a <source> block (injection delimiting)', () => {
 		const chunks = [makeChunk({ text: 'a' }), makeChunk({ text: 'b' })];
-		expect(assembleContext(chunks)).toContain('---');
+		const ctx = assembleContext(chunks);
+		expect(ctx.match(/<source /g)?.length).toBe(2);
+		expect(ctx.match(/<\/source>/g)?.length).toBe(2);
+	});
+
+	it('escapes XML-significant characters in the doc attribute', () => {
+		const chunks = [makeChunk({ source: 'a "b" <c>.pdf', text: 'x' })];
+		const ctx = assembleContext(chunks);
+		expect(ctx).toContain('doc="a &quot;b&quot; &lt;c&gt;.pdf"');
+	});
+
+	it('caps the assembled context at the char budget', () => {
+		// Two ~20k-char chunks; only the first fits under the 24k budget.
+		const big = 'x'.repeat(20_000);
+		const ctx = assembleContext([makeChunk({ text: big }), makeChunk({ text: big })]);
+		expect(ctx.match(/<source /g)?.length).toBe(1);
 	});
 });
 
@@ -141,6 +157,94 @@ describe('ChatRequestSchema', () => {
 		}));
 		expect(ChatRequestSchema.safeParse({ question: 'hi', chunks: tooMany }).success).toBe(false);
 	});
+
+	it('strips null bytes and control chars from the question', () => {
+		const result = ChatRequestSchema.safeParse({
+			question: 'hel\x00lo\x07 world',
+			chunks: [validChunk]
+		});
+		expect(result.success).toBe(true);
+		if (result.success) expect(result.data.question).toBe('hello world');
+	});
+
+	it('rejects a question that is only control characters', () => {
+		expect(
+			ChatRequestSchema.safeParse({ question: '\x00\x07\x1f', chunks: [validChunk] }).success
+		).toBe(false);
+	});
+
+	it('keeps tabs and newlines inside the question', () => {
+		const result = ChatRequestSchema.safeParse({
+			question: 'line1\nline2\tindented',
+			chunks: [validChunk]
+		});
+		expect(result.success).toBe(true);
+		if (result.success) expect(result.data.question).toBe('line1\nline2\tindented');
+	});
+});
+
+// ── resolveProvider (fallback chain) ───────────────────────────────────────────
+
+describe('resolveProvider', () => {
+	it('honors an explicit provider when its key is present', () => {
+		expect(resolveProvider('anthropic', { anthropicKey: 'a', fireworksKey: '' })).toEqual({
+			provider: 'anthropic'
+		});
+	});
+
+	it('errors when the explicitly requested provider lacks a key', () => {
+		const r = resolveProvider('anthropic', { anthropicKey: '', fireworksKey: 'f' });
+		expect('error' in r).toBe(true);
+	});
+
+	it('falls back fireworks → anthropic when unspecified', () => {
+		expect(resolveProvider(undefined, { anthropicKey: 'a', fireworksKey: 'f' })).toEqual({
+			provider: 'fireworks'
+		});
+		expect(resolveProvider(undefined, { anthropicKey: 'a', fireworksKey: '' })).toEqual({
+			provider: 'anthropic'
+		});
+	});
+
+	it('errors when no keys are available', () => {
+		expect('error' in resolveProvider(undefined, { anthropicKey: '', fireworksKey: '' })).toBe(
+			true
+		);
+	});
+});
+
+// ── Pricing ────────────────────────────────────────────────────────────────────
+
+describe('estimateCostUsd', () => {
+	it('computes input + output cost from token usage', () => {
+		// anthropic: $3/M in + $15/M out → 1M each = $18
+		expect(
+			estimateCostUsd('anthropic', { inputTokens: 1_000_000, outputTokens: 1_000_000 })
+		).toBeCloseTo(18);
+	});
+
+	it('uses the fireworks rate', () => {
+		// fireworks: $0.22/M in + $0.88/M out → 1M each = $1.10
+		expect(
+			estimateCostUsd('fireworks', { inputTokens: 1_000_000, outputTokens: 1_000_000 })
+		).toBeCloseTo(1.1);
+	});
+
+	it('returns 0 when usage is missing', () => {
+		expect(estimateCostUsd('fireworks', undefined)).toBe(0);
+	});
+});
+
+describe('formatCostUsd', () => {
+	it('keeps 4 decimals for sub-cent costs', () => {
+		expect(formatCostUsd(0.0012)).toBe('$0.0012');
+	});
+	it('uses 2 decimals otherwise', () => {
+		expect(formatCostUsd(1.5)).toBe('$1.50');
+	});
+	it('renders zero as $0.00', () => {
+		expect(formatCostUsd(0)).toBe('$0.00');
+	});
 });
 
 // ── interceptReasoning ────────────────────────────────────────────────────────
@@ -182,6 +286,8 @@ describe('interceptReasoning', () => {
 			writer,
 			citations,
 			log,
+			provider: 'fireworks',
+			modelId: 'test-model',
 			result: { toUIMessageStream: () => makeStream([]) }
 		});
 		expect(calls[0]).toMatchObject({ type: 'message-metadata' });
@@ -198,6 +304,8 @@ describe('interceptReasoning', () => {
 			writer,
 			citations,
 			log,
+			provider: 'fireworks',
+			modelId: 'test-model',
 			result: { toUIMessageStream: () => makeStream(deltas) }
 		});
 		// 12 deltas → 2 flushes at positions 6 and 12, plus the initial metadata write
@@ -212,6 +320,8 @@ describe('interceptReasoning', () => {
 			writer,
 			citations,
 			log,
+			provider: 'fireworks',
+			modelId: 'test-model',
 			result: { toUIMessageStream: () => makeStream(chunks) }
 		});
 		const withReasoning = calls.filter(
@@ -229,6 +339,8 @@ describe('interceptReasoning', () => {
 			writer,
 			citations,
 			log,
+			provider: 'fireworks',
+			modelId: 'test-model',
 			result: { toUIMessageStream: () => makeStream(chunks) }
 		});
 		expect(calls.some((c) => c['type'] === 'reasoning-delta')).toBe(false);
@@ -242,6 +354,8 @@ describe('interceptReasoning', () => {
 			writer,
 			citations,
 			log,
+			provider: 'fireworks',
+			modelId: 'test-model',
 			result: { toUIMessageStream: () => makeStream(chunks) }
 		});
 		expect(calls.some((c) => c['type'] === 'text-start' && c['id'] === 'oracle-error')).toBe(true);
@@ -256,8 +370,54 @@ describe('interceptReasoning', () => {
 			writer,
 			citations,
 			log,
+			provider: 'fireworks',
+			modelId: 'test-model',
 			result: { toUIMessageStream: () => makeStream(chunks) }
 		});
 		expect(calls.some((c) => c['type'] === 'text-delta' && c['delta'] === 'hello')).toBe(true);
+	});
+
+	it('emits server-computed cost + usage metadata on finish', async () => {
+		const { writer, calls } = makeWriter();
+		await interceptReasoning({
+			writer,
+			citations,
+			log,
+			provider: 'anthropic',
+			modelId: 'claude',
+			result: {
+				toUIMessageStream: () => makeStream([{ type: 'finish', finishReason: 'stop' }]),
+				totalUsage: Promise.resolve({ inputTokens: 1_000_000, outputTokens: 0 }),
+				finishReason: Promise.resolve('stop')
+			}
+		});
+		const meta = calls.find(
+			(c) =>
+				c['type'] === 'message-metadata' &&
+				(c['messageMetadata'] as Record<string, unknown>)?.['costUsd'] != null
+		);
+		const md = meta?.['messageMetadata'] as Record<string, unknown>;
+		expect(md?.['costUsd']).toBeCloseTo(3); // 1M input × $3/M
+		expect((md?.['usage'] as { inputTokens: number })?.inputTokens).toBe(1_000_000);
+	});
+
+	it('flags truncation when the model stops on the length cap', async () => {
+		const { writer, calls } = makeWriter();
+		await interceptReasoning({
+			writer,
+			citations,
+			log,
+			provider: 'fireworks',
+			modelId: 'x',
+			result: {
+				toUIMessageStream: () => makeStream([{ type: 'finish', finishReason: 'length' }]),
+				totalUsage: Promise.resolve({ inputTokens: 10, outputTokens: 20 }),
+				finishReason: Promise.resolve('length')
+			}
+		});
+		const truncated = calls.some(
+			(c) => (c['messageMetadata'] as Record<string, unknown>)?.['truncated'] === true
+		);
+		expect(truncated).toBe(true);
 	});
 });

@@ -107,6 +107,31 @@ export async function listDocuments(): Promise<DocumentMeta[]> {
 	return db.getAll('documents');
 }
 
+/**
+ * Garbage-collect chunks whose `source` has no matching document — orphans that
+ * an interrupted or partial delete could leave behind. Returns the number of
+ * chunks removed. Run on load so any past inconsistency self-heals; in normal
+ * operation upsert/delete are atomic over both stores, so this finds nothing.
+ */
+export async function sweepOrphanedChunks(): Promise<number> {
+	const db = await getDB();
+	const tx = db.transaction(['chunks', 'documents'], 'readwrite');
+	const validSources = new Set(await tx.objectStore('documents').getAllKeys());
+
+	let removed = 0;
+	let cursor = await tx.objectStore('chunks').openCursor();
+	while (cursor) {
+		if (!validSources.has(cursor.value.source)) {
+			await cursor.delete();
+			removed++;
+		}
+		cursor = await cursor.continue();
+	}
+
+	await tx.done;
+	return removed;
+}
+
 export async function getChunksBySource(source: string): Promise<EmbeddedChunk[]> {
 	const db = await getDB();
 	const raw = await db.getAllFromIndex('chunks', 'by_source', IDBKeyRange.only(source));
@@ -144,10 +169,16 @@ export async function similaritySearch(
 }
 
 export function cosineSimilarity(a: number[], b: number[]): number {
+	// Different lengths mean the vectors came from different embedding models
+	// (e.g. MiniLM 384-d vs MPNet 768-d) and are not comparable — fail safe to 0
+	// (no hit) rather than scoring over a truncated prefix and returning garbage.
+	if (a.length !== b.length) return 0;
+
 	let dot = 0;
 	let magA = 0;
 	let magB = 0;
-	const len = Math.min(a.length, b.length);
+	const len = a.length;
+
 	for (let i = 0; i < len; i++) {
 		dot += a[i] * b[i];
 		magA += a[i] * a[i];

@@ -1,20 +1,26 @@
 # Nexus Recall
 
 > Browser-first RAG document explorer with a dark-fantasy RPG aesthetic.
-> Upload PDFs and Markdown scrolls, embed them locally with Transformers.js, and interrogate them through the Oracle — a streaming AI chat powered by Fireworks.ai.
+> Upload PDFs and Markdown scrolls, embed them locally with Transformers.js, and interrogate them through the Oracle — a streaming AI chat powered by Fireworks.ai (or Claude).
 
 ![CI](https://github.com/arifdewiuae/nexus-recall/actions/workflows/ci.yml/badge.svg)
 ![E2E](https://github.com/arifdewiuae/nexus-recall/actions/workflows/e2e.yml/badge.svg)
+
+![Nexus Recall demo](docs/demo.gif)
+
+📖 **[How it works under the hood →](docs/how-it-works.html)** (standalone deep-dive page) · **[Conventions & FAQ →](docs/CONVENTIONS.md)**
 
 ---
 
 ## Quickstart
 
+Requires **Node ≥ 24** and **pnpm** (`corepack enable` picks up the pinned version).
+
 ```sh
 cp .env.example .env
 # fill in FIREWORKS_API_KEY (required) — see Environment Variables below
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 App runs at `http://localhost:5173`.
@@ -24,31 +30,53 @@ App runs at `http://localhost:5173`.
 ## Features
 
 - **Drag & drop ingestion** — PDF and Markdown files parsed entirely in the browser
-- **Local-first embeddings** — `@xenova/transformers` Web Worker; no data leaves your machine unless you opt in to cloud embeddings
-- **Semantic + recursive chunking** — LangChain.js `RecursiveCharacterTextSplitter` + `SemanticChunker`
-- **IndexedDB vector store** — chunks persist across sessions via `idb`; cosine similarity search in-memory
-- **Streaming RAG answers** — Fireworks.ai (default), Claude (optional) via Vercel AI SDK `streamText`
-- **Structured citations** — `generateObject` + Zod extracts source/page/quote before streaming begins
-- **Document viewer highlighting** — retrieved chunks overlay the PDF canvas; click citation → scroll viewer
+- **Local-first embeddings** — `@xenova/transformers` in a Web Worker; nothing leaves your machine unless you opt in to cloud embeddings
+- **Markdown-aware chunking** — LangChain.js `RecursiveCharacterTextSplitter` / `MarkdownTextSplitter`, 800-char chunks with 120-char overlap, nearest heading prepended
+- **IndexedDB vector store** — chunks persist across sessions via `idb`; in-memory cosine similarity search with per-document scoping
+- **Cross-encoder reranking** — `ms-marco-MiniLM-L-6-v2`, warmed via `/api/warmup`, with graceful fallback to vector order
+- **Streaming RAG answers** — Vercel AI SDK `streamText` → `createUIMessageStream`; Fireworks.ai (default) or Claude
+- **Deterministic citations** — derived directly from the reranked chunks (no extra LLM call), validated by Zod; click a `[n]` to scroll the viewer to the source
+- **Live reasoning** — chain-of-thought is intercepted server-side and shown in a separate panel, never mixed into the answer
+- **Per-answer cost** — token usage + USD cost computed server-side and shown under each reply
 - **PWA** — installable, works offline for already-indexed documents
-- **Eval system** — Faithfulness / Relevance / Context Recall scores via `npm run eval`
+- **Eval system** — BM25 recall@k / MRR + LLM-as-judge faithfulness via `pnpm eval`
 
 ---
 
-## Tech Stack
+## Architecture
 
-| Layer         | Choice                                                                   |
-| ------------- | ------------------------------------------------------------------------ |
-| Framework     | SvelteKit (Svelte 5 runes)                                               |
-| Styling       | Tailwind CSS v4 + Flowbite Svelte                                        |
-| LLM streaming | Vercel AI SDK (`ai`, `@ai-sdk/svelte`)                                   |
-| LLM providers | Fireworks.ai (default) · Anthropic Claude (optional)                     |
-| Embeddings    | `@xenova/transformers` (local) · OpenAI `text-embedding-3-small` (cloud) |
-| Chunking      | LangChain.js (`RecursiveCharacterTextSplitter`, `SemanticChunker`)       |
-| Vector store  | IndexedDB via `idb`                                                      |
-| PDF parsing   | `pdfjs-dist`                                                             |
-| Testing       | Vitest (unit) · Playwright (E2E)                                         |
-| Deployment    | Vercel (`@sveltejs/adapter-vercel`)                                      |
+Strictly layered — dependencies flow one way (UI → API → AI/RAG):
+
+```
+Browser (Svelte 5 runes)
+├── routes/+page.svelte         split-pane: Tome (viewer) | Oracle (chat)
+├── components/
+│   ├── DocumentViewer.svelte    PDF/MD render + highlight overlays
+│   ├── ChatPanel.svelte         orchestrator → oracle/{OracleHeader,MessageList,OracleInput,…}
+│   └── …                        Hud, DocumentTabs, IngestProgress, SettingsModal, …
+├── stores/                      ingestion state machine, apiKeys, theme, toast, reasoning
+├── utils/                       pure, tested helpers (cite-match, format, oracle-markdown)
+└── rag/  (runs in the browser / Web Worker)
+    ├── parser.ts                pdfjs-dist + markdown
+    ├── parse-text.ts            shared text extraction helpers
+    ├── chunker.ts               LangChain splitters, source::page::index chunk IDs
+    ├── embeddings.ts            Transformers.js worker (MiniLM/MPNet) or OpenAI
+    └── vector-store.ts          IndexedDB + cosine similarity (sourceFilter)
+
+Server (Vercel, @sveltejs/adapter-vercel)
+├── routes/api/chat/
+│   ├── +server.ts               key resolution → validation → provider select → rerank → stream
+│   ├── chat.keys.ts             header keys → demo env → 401; provider fallback chain
+│   ├── chat.models.ts           env-overridable model IDs + model factory
+│   ├── chat.context.ts          <source n> assembly (injection-delimited) + citations
+│   ├── chat.schema.ts           Zod request/citation schemas + input sanitization
+│   ├── chat.stream.ts           reasoning interceptor + cost/usage on finish
+│   ├── chat.pricing.ts          provider pricing map → server-side USD cost
+│   └── chat.logger.ts           request-scoped structured JSON logs
+├── routes/api/warmup/+server.ts warms the reranker singleton
+├── routes/api/health/+server.ts liveness + config probe
+└── lib/server/reranker.ts       cross-encoder cold-start singleton + fallback
+```
 
 ---
 
@@ -56,79 +84,79 @@ App runs at `http://localhost:5173`.
 
 Copy `.env.example` to `.env` and fill in the values:
 
-| Variable            | Required | Where to get it                                                             |
-| ------------------- | -------- | --------------------------------------------------------------------------- |
-| `FIREWORKS_API_KEY` | Yes      | [fireworks.ai](https://fireworks.ai) — free tier available                  |
-| `OPENAI_API_KEY`    | No       | [platform.openai.com](https://platform.openai.com) — for cloud embeddings   |
-| `ANTHROPIC_API_KEY` | No       | [console.anthropic.com](https://console.anthropic.com) — for Claude answers |
+| Variable            | Required | Where to get it                                                              |
+| ------------------- | -------- | ---------------------------------------------------------------------------- |
+| `FIREWORKS_API_KEY` | Yes\*    | [fireworks.ai](https://fireworks.ai) — free tier available                   |
+| `ANTHROPIC_API_KEY` | No       | [console.anthropic.com](https://console.anthropic.com) — for Claude answers  |
+| `OPENAI_API_KEY`    | No       | [platform.openai.com](https://platform.openai.com) — for cloud embeddings    |
+| `DEMO_KEYS_ENABLED` | No       | `true` to let the server fall back to the keys above when a request has none |
+| `FIREWORKS_MODEL`   | No       | override the default Fireworks model id                                      |
+| `ANTHROPIC_MODEL`   | No       | override the default Anthropic model id                                      |
 
-> **Note:** `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` can also be supplied at runtime via the Settings panel — they are never sent to the server, only used for client-side API calls.
+\* Required for server-side demo mode. Otherwise users supply their own keys via
+the Settings panel; LLM keys travel as request **headers** and are resolved
+server-side (never logged). Cloud-embedding keys are used client-side — see
+[ADR 0001](docs/adr/0001-client-side-own-keys.md).
 
 ---
 
-## Architecture
+## Security & guardrails
 
-```
-Browser
-├── DocumentViewer.svelte   PDF/MD render + highlight overlays
-├── ChatPanel.svelte        useChat (Vercel AI SDK) → streaming bubbles
-└── Web Worker
-    ├── embeddings.ts       @xenova/transformers pipeline
-    └── vector-store.ts     IndexedDB via idb (cosine similarity search)
-
-Server (Vercel Edge)
-└── /api/chat/+server.ts
-    ├── Cross-encoder reranking (Transformers.js)
-    ├── generateObject → CitationSchema (Zod)
-    └── streamText → toDataStreamResponse()
-        ├── Provider: Fireworks.ai (default)
-        └── Provider: Anthropic Claude (optional)
-```
+- **Prompt injection** — retrieved document text is wrapped in `<source n="…">`
+  tags and the system prompt treats it as untrusted data; instructions found
+  inside a scroll are ignored.
+- **Key handling** — user keys via headers → demo env fallback → 401; keys never
+  appear in logs.
+- **Input boundary** — Zod validates length and provider; null bytes / control
+  chars are stripped from the question.
+- **Provider fallback** — `resolveProvider` expresses primary → fallback → error
+  in code, not a runbook.
+- **Cost envelope** — usage + USD cost are computed server-side from day one and
+  surfaced per answer; rates live in one `chat.pricing.ts` map.
 
 ---
 
 ## Scripts
 
 ```sh
-npm run dev          # dev server (http://localhost:5173)
-npm run build        # production build
-npm run preview      # preview production build (http://localhost:4173)
-npm run check        # svelte-check + TypeScript
-npm run lint         # Prettier + ESLint
-npm run test:unit    # Vitest unit tests
-npm run test:e2e     # Playwright E2E tests
-npm run eval         # RAG eval: Faithfulness · Relevance · Context Recall
+pnpm dev            # dev server (http://localhost:5173)
+pnpm build          # production build
+pnpm preview        # preview production build (http://localhost:4173)
+pnpm check          # svelte-check + TypeScript
+pnpm lint           # Prettier + ESLint
+pnpm test:unit      # Vitest unit tests
+pnpm test:e2e       # Playwright E2E (golden path: upload → process → chat → citation)
+pnpm eval           # RAG eval: BM25 recall@k / MRR + faithfulness gate
 ```
 
 ---
 
-## Project Structure
+## Testing & evaluation
 
-```
-src/
-├── routes/
-│   ├── +layout.svelte      app shell
-│   ├── +page.svelte        main split-pane view
-│   └── api/chat/
-│       └── +server.ts      RAG query endpoint
-└── lib/
-    ├── components/
-    │   ├── ChatPanel.svelte
-    │   ├── DocumentViewer.svelte
-    │   ├── ChunkVisualizer.svelte
-    │   └── Sprite.svelte   pixel-art CSS box-shadow sprites
-    ├── rag/
-    │   ├── chunker.ts
-    │   ├── embeddings.ts
-    │   └── vector-store.ts
-    ├── eval/
-    │   ├── faithfulness.ts
-    │   ├── relevance.ts
-    │   └── recall.ts
-    └── utils/
-        └── sprite.ts
-```
+- **Unit** (Vitest) — RAG codecs, chunking, vector store (`fake-indexeddb`),
+  ingestion state machine, the streaming interceptor, cost/pricing, provider
+  fallback, and input sanitization.
+- **E2E** (Playwright) — golden path with the AI stream mocked at the exact
+  AI SDK v6 wire format (`x-vercel-ai-ui-message-stream: v1`).
+- **Evals** — `pnpm eval` runs offline retrieval metrics (BM25 recall@k, MRR)
+  and an optional LLM-as-judge faithfulness pass; gates the build at
+  recall@3 ≥ 0.8 / faithfulness ≥ 0.7 and appends to `evals/scores.json`.
+- **CI** (GitHub Actions, pnpm + Node 24, SHA-pinned actions) — lint → typecheck
+  → unit; a separate E2E job; and an evals gate on retrieval-affecting PRs.
 
 ---
 
-_Part of the Nexus portfolio — [Nexus Forge](https://github.com/arif-dewi/nexus-forge) (Vue/LangGraph) · [Nexus Trace](https://github.com/arif-dewi/nexus-trace) (React/Next.js/LangGraph) · **Nexus Recall** (SvelteKit/RAG/PWA)_
+## Deployment
+
+Deploys to Vercel via `@sveltejs/adapter-vercel`. COOP/COEP headers (required for
+the Transformers.js / pdfjs WASM `SharedArrayBuffer`) are set in `vercel.json`.
+Set `DEMO_KEYS_ENABLED=false` in production. Speed Insights + Analytics are wired
+in the root layout (no-op off-platform).
+
+**Next steps (documented, not shipped):** session rate limiting + content
+moderation (own-key local-first demo doesn't strictly need them); a strict CSP;
+a server proxy for cloud embeddings.
+
+---
+
+_Part of the Nexus portfolio — Nexus Forge (Vue/LangGraph) · Nexus Trace (React/Next.js/LangGraph) · **Nexus Recall** (SvelteKit/RAG/PWA)._

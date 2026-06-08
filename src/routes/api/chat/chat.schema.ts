@@ -7,23 +7,33 @@ export const MAX_QUESTION_LEN = 2000;
 
 // ── ChunkRecord ────────────────────────────────────────────────────────────────
 
-export const ChunkSchema = z
-	.object({
-		id: z.string(),
-		source: z.string(),
-		pageNumber: z.number().optional(),
-		chunkIndex: z.number(),
-		text: z.string(),
-		vector: z.array(z.number())
-	})
-	.passthrough();
+// looseObject = the Zod 4 replacement for the deprecated `.passthrough()` —
+// unknown keys on a chunk are preserved rather than stripped.
+export const ChunkSchema = z.looseObject({
+	id: z.string(),
+	source: z.string(),
+	pageNumber: z.number().optional(),
+	chunkIndex: z.number(),
+	text: z.string(),
+	vector: z.array(z.number())
+});
 
 export type ChunkRecord = z.infer<typeof ChunkSchema>;
 
 // ── ChatRequest ────────────────────────────────────────────────────────────────
 
+/** Strips null bytes and C0/C1 control chars (keeps tab/newline) at the boundary. */
+function sanitizeText(value: string): string {
+	// eslint-disable-next-line no-control-regex
+	return value.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '').trim();
+}
+
 export const ChatRequestSchema = z.object({
-	question: z.string().min(1, 'question is required').max(MAX_QUESTION_LEN),
+	question: z
+		.string()
+		.max(MAX_QUESTION_LEN)
+		.transform(sanitizeText)
+		.pipe(z.string().min(1, 'question is required')),
 	chunks: z
 		.array(ChunkSchema)
 		.min(1, 'chunks array is required and must not be empty')
