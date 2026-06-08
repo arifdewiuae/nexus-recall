@@ -28,6 +28,8 @@
 	let settingsOpen = $state(false);
 	let fileInputEl = $state<HTMLInputElement | null>(null);
 	let activeSource = $state<string | null>(null);
+	// Retrieval scope: true = search every loaded doc, false = only the open one.
+	let scopeAll = $state(true);
 	let mobileTab = $state<'tome' | 'oracle'>('tome');
 	let tomeWidth = $state<number | null>(null);
 
@@ -45,10 +47,17 @@
 	}
 
 	function handleCiteClick(cite: Citation) {
+		// Open the cited document's tab first — with all-scrolls scope a citation
+		// can come from a doc other than the one on screen.
+		if (cite.source) activeSource = cite.source;
 		focusedPage = cite.page;
 		focusedQuote = cite.quote;
 		focusedChunkId = cite.chunkId ?? null;
 		focusNonce += 1;
+	}
+
+	function toggleScope() {
+		scopeAll = !scopeAll;
 	}
 
 	// Default the active document to the first ready one.
@@ -65,6 +74,11 @@
 	);
 
 	// ── Ingestion entry points ─────────────────────────────────────────────────
+	// Open the just-added document (the last one, for a multi-file drop) so a new
+	// tab is focused immediately instead of silently appended.
+	function openNewest(sources: string[]) {
+		if (sources.length) activeSource = sources[sources.length - 1];
+	}
 	function onDragOver(e: DragEvent) {
 		e.preventDefault();
 		dropActive = true;
@@ -75,11 +89,11 @@
 	function onDrop(e: DragEvent) {
 		e.preventDefault();
 		dropActive = false;
-		ingestFiles(Array.from(e.dataTransfer?.files ?? []));
+		ingestFiles(Array.from(e.dataTransfer?.files ?? []), openNewest);
 	}
 	function onFileInput(e: Event) {
 		const input = e.currentTarget as HTMLInputElement;
-		ingestFiles(Array.from(input.files ?? []));
+		ingestFiles(Array.from(input.files ?? []), openNewest);
 		input.value = '';
 	}
 	function openFilePicker() {
@@ -97,7 +111,7 @@
 	async function summonSample() {
 		const res = await fetch(ASSET.sampleDoc);
 		const text = await res.text();
-		ingestFiles([new File([text], 'dragon-codex.md', { type: 'text/markdown' })]);
+		ingestFiles([new File([text], 'dragon-codex.md', { type: 'text/markdown' })], openNewest);
 	}
 </script>
 
@@ -183,7 +197,12 @@
 
 		<!-- Oracle terminal (right pane) -->
 		<div class="oracle" style={tomeWidth ? 'flex:1 1 0;width:auto' : ''}>
-			<ChatPanel documentFilter={activeSource} onCiteClick={handleCiteClick} />
+			<ChatPanel
+				{activeSource}
+				{scopeAll}
+				onToggleScope={toggleScope}
+				onCiteClick={handleCiteClick}
+			/>
 		</div>
 	</div>
 </div>

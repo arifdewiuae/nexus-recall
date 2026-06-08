@@ -25,11 +25,18 @@
 	} from './oracle/oracle';
 
 	interface Props {
-		documentFilter?: string | null;
+		/** The document shown in the viewer — the target of "this scroll" scope. */
+		activeSource?: string | null;
+		/** When true, retrieval spans every loaded document; otherwise activeSource. */
+		scopeAll?: boolean;
+		onToggleScope?: () => void;
 		onCiteClick?: (cite: Citation) => void;
 	}
 
-	let { documentFilter = null, onCiteClick }: Props = $props();
+	let { activeSource = null, scopeAll = true, onToggleScope, onCiteClick }: Props = $props();
+
+	// null = search all chunks; otherwise scope retrieval to the active document.
+	const searchFilter = $derived(scopeAll ? null : activeSource);
 
 	let provider = $state<Provider>(PROVIDER.fireworks);
 	const chat = new Chat({ transport: new DefaultChatTransport({ api: API_ROUTE.chat }) });
@@ -72,7 +79,7 @@
 		await loadModel();
 
 		const queryVec = await embedText(question);
-		const chunks = await similaritySearch(queryVec, SEARCH_TOP_K, documentFilter ?? undefined);
+		const chunks = await similaritySearch(queryVec, SEARCH_TOP_K, searchFilter ?? undefined);
 
 		const hits = new SvelteMap<string, number>();
 		(chunks as Array<{ id: string }>)
@@ -117,7 +124,7 @@
 			{ text: question },
 			{
 				headers: keyHeaders(),
-				body: { question, chunks, documentFilter: documentFilter ?? undefined, provider }
+				body: { question, chunks, documentFilter: searchFilter ?? undefined, provider }
 			}
 		);
 	}
@@ -168,7 +175,9 @@
 	bind:this={inputComp}
 	ready={$readyCount > 0}
 	{isBusy}
-	{documentFilter}
+	{scopeAll}
+	{activeSource}
+	{onToggleScope}
 	onSubmit={handleSubmit}
 	onWarmup={warmup}
 />

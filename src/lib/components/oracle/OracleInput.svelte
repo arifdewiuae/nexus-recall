@@ -6,12 +6,23 @@
 		value: string;
 		ready: boolean;
 		isBusy: boolean;
-		documentFilter: string | null;
+		scopeAll: boolean;
+		activeSource: string | null;
+		onToggleScope?: () => void;
 		onSubmit: () => void;
 		onWarmup: () => void;
 	}
 
-	let { value = $bindable(), ready, isBusy, documentFilter, onSubmit, onWarmup }: Props = $props();
+	let {
+		value = $bindable(),
+		ready,
+		isBusy,
+		scopeAll,
+		activeSource,
+		onToggleScope,
+		onSubmit,
+		onWarmup
+	}: Props = $props();
 
 	let inputEl = $state<HTMLInputElement | null>(null);
 
@@ -30,12 +41,21 @@
 
 <span id="oracle-hint" style="display:none">Press Enter to send, Cmd+K to focus</span>
 <div class="oracle-input-wrap">
-	{#if documentFilter}
-		<div
-			style="font-family:var(--font-pixel);font-size:7px;color:var(--text-dim);padding:0 2px 8px;letter-spacing:0.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+	{#if ready}
+		<button
+			type="button"
+			class="scope-toggle"
+			onclick={onToggleScope}
+			disabled={!activeSource}
+			title={scopeAll
+				? 'Searching all loaded scrolls — click to scope to the open one'
+				: 'Searching only the open scroll — click to search all'}
 		>
-			SCOPE: <span style="color:var(--accent)">{documentFilter}</span>
-		</div>
+			SCOPE:
+			<span style="color:var(--accent)"
+				>{!scopeAll && activeSource ? activeSource : 'ALL SCROLLS'}</span
+			>
+		</button>
 	{/if}
 	<div class="oracle-input">
 		<span class="prompt"><PixelIcon name={ICON_NAME.arrow} size={ICON_SIZE.xs} /></span>
@@ -62,3 +82,27 @@
 		</button>
 	</div>
 </div>
+
+<style>
+	.scope-toggle {
+		display: block;
+		max-width: 100%;
+		background: none;
+		border: none;
+		padding: 0 2px 8px;
+		font-family: var(--font-pixel);
+		font-size: 7px;
+		letter-spacing: 0.5px;
+		color: var(--text-dim);
+		cursor: pointer;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.scope-toggle:hover:not(:disabled) {
+		color: var(--text);
+	}
+	.scope-toggle:disabled {
+		cursor: default;
+	}
+</style>
