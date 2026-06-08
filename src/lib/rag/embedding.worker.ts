@@ -12,17 +12,33 @@ type FeatureExtractor = (
 
 let extractor: FeatureExtractor | null = null;
 
-/** Download + cache the model, streaming progress back to the main thread. */
+const MAX_LOAD_ATTEMPTS = 3;
+const RETRY_BACKOFF_MS = 1_000;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Download + cache the model, streaming progress back to the main thread.
+ * The model is fetched from the HuggingFace CDN on first run; transient network
+ * failures are retried with a short backoff before surfacing an error.
+ */
 async function handleLoad(modelId: string): Promise<void> {
-	try {
-		const loaded = await pipeline('feature-extraction', modelId, {
-			progress_callback: (payload: Record<string, unknown>) =>
-				self.postMessage({ type: WORKER_EVENT.progress, payload })
-		});
-		extractor = loaded as unknown as FeatureExtractor;
-		self.postMessage({ type: WORKER_EVENT.ready });
-	} catch (err) {
-		self.postMessage({ type: WORKER_EVENT.error, message: String(err) });
+	for (let attempt = 1; attempt <= MAX_LOAD_ATTEMPTS; attempt++) {
+		try {
+			const loaded = await pipeline('feature-extraction', modelId, {
+				progress_callback: (payload: Record<string, unknown>) =>
+					self.postMessage({ type: WORKER_EVENT.progress, payload })
+			});
+			extractor = loaded as unknown as FeatureExtractor;
+			self.postMessage({ type: WORKER_EVENT.ready });
+			return;
+		} catch (err) {
+			if (attempt === MAX_LOAD_ATTEMPTS) {
+				self.postMessage({ type: WORKER_EVENT.error, message: String(err) });
+				return;
+			}
+			await sleep(RETRY_BACKOFF_MS * attempt);
+		}
 	}
 }
 

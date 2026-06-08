@@ -7,6 +7,10 @@ export default defineConfig({
 	// fresh context), so the 30s default test timeout is too tight once a test
 	// also chats / clicks. waitForReady already budgets 90s — match it here.
 	timeout: 120_000,
+	// Embedding tests download the Transformers.js model from the HuggingFace CDN
+	// at runtime; a slow/unreachable CDN times out a whole batch of tests. Retry
+	// in CI so a transient network blip doesn't fail the run.
+	retries: CI ? 2 : 0,
 	webServer: CI
 		? { command: 'pnpm run preview', port: 4173, reuseExistingServer: false }
 		: { command: 'pnpm run dev', url: 'http://localhost:5173', reuseExistingServer: true },

@@ -57,9 +57,10 @@ Browser (Svelte 5 runes)
 │   ├── ChatPanel.svelte         orchestrator → oracle/{OracleHeader,MessageList,OracleInput,…}
 │   └── …                        Hud, DocumentTabs, IngestProgress, SettingsModal, …
 ├── stores/                      ingestion state machine, apiKeys, theme, toast, reasoning
-├── utils/                       pure, tested helpers (cite-match, format, oracle-markdown, parse-text)
+├── utils/                       pure, tested helpers (cite-match, format, oracle-markdown)
 └── rag/  (runs in the browser / Web Worker)
     ├── parser.ts                pdfjs-dist + markdown
+    ├── parse-text.ts            shared text extraction helpers
     ├── chunker.ts               LangChain splitters, source::page::index chunk IDs
     ├── embeddings.ts            Transformers.js worker (MiniLM/MPNet) or OpenAI
     └── vector-store.ts          IndexedDB + cosine similarity (sourceFilter)
