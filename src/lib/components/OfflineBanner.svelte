@@ -37,7 +37,7 @@
 		padding: 6px 16px;
 		background: var(--err-dim, #3a0a0a);
 		color: var(--err, #ff4444);
-		font-family: 'Press Start 2P', monospace;
+		font-family: var(--font-pixel);
 		font-size: 8px;
 		letter-spacing: 1px;
 		border-bottom: 1px solid var(--err, #ff4444);

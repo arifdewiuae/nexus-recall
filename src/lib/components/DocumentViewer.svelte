@@ -121,7 +121,7 @@
 
 <style>
 	.page-sep {
-		font-family: 'Press Start 2P', monospace;
+		font-family: var(--font-pixel);
 		font-size: 7px;
 		color: var(--parchment-ink-dim);
 		letter-spacing: 1px;
@@ -135,7 +135,7 @@
 	.md-body :global(h2),
 	.md-body :global(h3),
 	.md-body :global(h4) {
-		font-family: 'Press Start 2P', monospace;
+		font-family: var(--font-pixel);
 		color: var(--parchment-ink-strong);
 		margin: 1.6em 0 0.6em;
 		line-height: 1.6;
@@ -172,7 +172,7 @@
 		background: var(--bg-deep);
 		color: var(--accent);
 		padding: 1px 5px;
-		font-family: 'JetBrains Mono', monospace;
+		font-family: var(--font-mono);
 		font-size: 11px;
 	}
 

@@ -71,14 +71,14 @@
 	}
 
 	.toast-title {
-		font-family: 'Press Start 2P', monospace;
+		font-family: var(--font-pixel);
 		font-size: 8px;
 		color: var(--accent, #c1184a);
 		letter-spacing: 1px;
 	}
 
 	.toast-sub {
-		font-family: 'Press Start 2P', monospace;
+		font-family: var(--font-pixel);
 		font-size: 6px;
 		color: var(--text-dim, #7a5060);
 		letter-spacing: 0.5px;

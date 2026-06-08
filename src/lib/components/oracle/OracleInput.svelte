@@ -32,7 +32,7 @@
 <div class="oracle-input-wrap">
 	{#if documentFilter}
 		<div
-			style="font-family:'Press Start 2P',monospace;font-size:7px;color:var(--text-dim);padding:0 2px 8px;letter-spacing:0.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+			style="font-family:var(--font-pixel);font-size:7px;color:var(--text-dim);padding:0 2px 8px;letter-spacing:0.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
 		>
 			SCOPE: <span style="color:var(--accent)">{documentFilter}</span>
 		</div>

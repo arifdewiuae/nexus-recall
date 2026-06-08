@@ -228,7 +228,7 @@
 	}
 
 	.modal-title {
-		font-family: 'Press Start 2P', monospace;
+		font-family: var(--font-pixel);
 		font-size: 9px;
 		color: var(--accent);
 		flex: 1;
@@ -258,7 +258,7 @@
 	}
 
 	.modal-hint {
-		font-family: 'Press Start 2P', monospace;
+		font-family: var(--font-pixel);
 		font-size: 7px;
 		color: var(--text-dim);
 		line-height: 1.8;
@@ -272,7 +272,7 @@
 	}
 
 	.field-label {
-		font-family: 'Press Start 2P', monospace;
+		font-family: var(--font-pixel);
 		font-size: 7px;
 		color: var(--text-dim);
 		display: flex;
@@ -306,7 +306,7 @@
 		border: none;
 		box-shadow: inset 0 0 0 2px var(--border-outer);
 		color: var(--text);
-		font-family: 'Press Start 2P', monospace;
+		font-family: var(--font-pixel);
 		font-size: 8px;
 		padding: 8px 10px;
 		outline: none;

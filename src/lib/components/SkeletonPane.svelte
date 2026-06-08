@@ -26,7 +26,7 @@
 	}
 
 	.sk-label {
-		font-family: 'Press Start 2P', monospace;
+		font-family: var(--font-pixel);
 		font-size: 8px;
 		color: var(--text-dim);
 		letter-spacing: 1px;

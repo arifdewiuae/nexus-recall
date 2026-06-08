@@ -37,7 +37,7 @@
 			0 0 0 2px var(--border-outer),
 			inset 2px 2px 0 0 var(--border-light),
 			inset -2px -2px 0 0 var(--border-dark);
-		font-family: 'JetBrains Mono', monospace;
+		font-family: var(--font-mono);
 		font-size: 12px;
 		max-width: 360px;
 		pointer-events: auto;
@@ -78,7 +78,7 @@
 		background: transparent;
 		border: none;
 		color: var(--text-dim);
-		font-family: 'Press Start 2P', monospace;
+		font-family: var(--font-pixel);
 		font-size: 8px;
 		cursor: pointer;
 		padding: 2px 4px;
