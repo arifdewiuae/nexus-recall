@@ -7,7 +7,8 @@ import {
 	upsertChunks,
 	deleteDocument as deleteFromStore,
 	listDocuments,
-	getChunksBySource
+	getChunksBySource,
+	sweepOrphanedChunks
 } from '$lib/rag/vector-store';
 import type { EmbeddedChunk } from '$lib/rag/vector-store';
 import { addToast } from '$lib/stores/toast';
@@ -76,7 +77,10 @@ async function ingestOne(file: File, entryId: string): Promise<void> {
 	}
 }
 
-export async function ingestFiles(files: File[]): Promise<void> {
+export async function ingestFiles(
+	files: File[],
+	onAdded?: (sources: string[]) => void
+): Promise<void> {
 	const accepted = files.filter((f) =>
 		ACCEPTED_EXTENSIONS.some((ext) => f.name.toLowerCase().endsWith(ext))
 	);
@@ -89,6 +93,9 @@ export async function ingestFiles(files: File[]): Promise<void> {
 		status: DOCUMENT_STATUS.pending
 	}));
 	documents.update((docs) => [...docs, ...entries]);
+	// Report the new tabs synchronously (before the slow embed) so the caller can
+	// open the freshly-added document immediately and show its indexing progress.
+	onAdded?.(entries.map((e) => e.source));
 
 	for (let i = 0; i < accepted.length; i++) {
 		await ingestOne(accepted[i], entries[i].id);
@@ -96,6 +103,10 @@ export async function ingestFiles(files: File[]): Promise<void> {
 }
 
 export async function rehydrateFromDB(): Promise<void> {
+	// Drop any chunks whose document is gone (e.g. an interrupted delete) before
+	// restoring — keeps the physical store consistent with what the UI shows.
+	await sweepOrphanedChunks();
+
 	const metas = await listDocuments();
 	if (metas.length === 0) return;
 
@@ -127,5 +138,9 @@ export function removeDocument(source: string): void {
 		next.delete(source);
 		return next;
 	});
-	deleteFromStore(source).catch(() => {});
+	deleteFromStore(source).catch((err) => {
+		// Don't swallow it — a failed delete leaves chunks behind (the orphans
+		// rehydrate later sweeps). Surface it so the user knows storage is stale.
+		addToast(`Couldn't remove "${source}" from storage: ${String(err)}`, 'error');
+	});
 }

@@ -6,6 +6,7 @@ import {
 	deleteDocument,
 	listDocuments,
 	cosineSimilarity,
+	sweepOrphanedChunks,
 	_resetDB
 } from './vector-store';
 import type { EmbeddedChunk } from './vector-store';
@@ -166,6 +167,40 @@ describe('vector store (IndexedDB)', () => {
 		const sources = docs.map((d) => d.source);
 		expect(sources).toContain('meta1.pdf');
 		expect(sources).toContain('meta2.pdf');
+	});
+
+	it('sweepOrphanedChunks removes chunks whose document is gone', async () => {
+		// Craft an orphan via the public API: upsertChunks writes one document meta
+		// for chunks[0].source only, so the second chunk's source ('orphan.pdf') has
+		// no document entry — the shape an interrupted delete would leave behind.
+		await upsertChunks(
+			[
+				makeChunk({ id: 'keep1', source: 'keep.pdf', chunkIndex: 0, text: 'keep', vector: [1, 0] }),
+				makeChunk({
+					id: 'orph1',
+					source: 'orphan.pdf',
+					chunkIndex: 1,
+					text: 'gone',
+					vector: [0, 1]
+				})
+			],
+			'keep.pdf'
+		);
+
+		const removed = await sweepOrphanedChunks();
+		expect(removed).toBe(1);
+
+		const results = await similaritySearch([0, 1], 10);
+		expect(results.some((r) => r.id === 'orph1')).toBe(false);
+		expect(results.some((r) => r.id === 'keep1')).toBe(true);
+	});
+
+	it('sweepOrphanedChunks is a no-op when every chunk has a document', async () => {
+		await upsertChunks(
+			[makeChunk({ id: 'ok1', source: 'ok.pdf', chunkIndex: 0, text: 't', vector: [1, 0] })],
+			'ok.pdf'
+		);
+		expect(await sweepOrphanedChunks()).toBe(0);
 	});
 
 	it('sourceFilter scopes search to one document', async () => {

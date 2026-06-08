@@ -19,6 +19,7 @@ vi.mock('$lib/rag/vector-store', () => ({
 	deleteDocument: vi.fn(),
 	listDocuments: vi.fn(),
 	getChunksBySource: vi.fn(),
+	sweepOrphanedChunks: vi.fn(),
 	similaritySearch: vi.fn(),
 	cosineSimilarity: vi.fn()
 }));

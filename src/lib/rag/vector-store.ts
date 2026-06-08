@@ -107,6 +107,31 @@ export async function listDocuments(): Promise<DocumentMeta[]> {
 	return db.getAll('documents');
 }
 
+/**
+ * Garbage-collect chunks whose `source` has no matching document — orphans that
+ * an interrupted or partial delete could leave behind. Returns the number of
+ * chunks removed. Run on load so any past inconsistency self-heals; in normal
+ * operation upsert/delete are atomic over both stores, so this finds nothing.
+ */
+export async function sweepOrphanedChunks(): Promise<number> {
+	const db = await getDB();
+	const tx = db.transaction(['chunks', 'documents'], 'readwrite');
+	const validSources = new Set(await tx.objectStore('documents').getAllKeys());
+
+	let removed = 0;
+	let cursor = await tx.objectStore('chunks').openCursor();
+	while (cursor) {
+		if (!validSources.has(cursor.value.source)) {
+			await cursor.delete();
+			removed++;
+		}
+		cursor = await cursor.continue();
+	}
+
+	await tx.done;
+	return removed;
+}
+
 export async function getChunksBySource(source: string): Promise<EmbeddedChunk[]> {
 	const db = await getDB();
 	const raw = await db.getAllFromIndex('chunks', 'by_source', IDBKeyRange.only(source));
