@@ -39,10 +39,11 @@
 	<div class="spacer"></div>
 	<button
 		class="chip chip-btn"
+		class:is-locked={modelLocked}
 		onclick={cycleModel}
-		disabled={modelLocked}
+		aria-disabled={modelLocked}
 		title={modelLocked
-			? 'Clear all scrolls to change the embedding model'
+			? `Locked to ${MODEL_LABELS[$embeddingModel]} — clear all scrolls to switch (every doc must share one model)`
 			: 'Click to cycle embedding model'}
 		aria-label="Cycle embedding model"
 	>

@@ -264,6 +264,15 @@ textarea {
 .chip-btn:hover {
 	box-shadow: 0 0 0 2px var(--accent);
 }
+/* aria-disabled (not the `disabled` attr) so the explanatory title still shows
+   on hover — a native disabled button suppresses pointer events and its tooltip. */
+.chip-btn.is-locked {
+	cursor: not-allowed;
+	opacity: 0.55;
+}
+.chip-btn.is-locked:hover {
+	box-shadow: none;
+}
 .chip-icon {
 	font-size: 14px;
 	padding: 5px 9px;
