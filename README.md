@@ -6,9 +6,7 @@
 ![CI](https://github.com/arifdewiuae/nexus-recall/actions/workflows/ci.yml/badge.svg)
 ![E2E](https://github.com/arifdewiuae/nexus-recall/actions/workflows/e2e.yml/badge.svg)
 
-<!-- TODO: record a ~15s GIF (upload → ask → click citation → highlight) with Kap
-     and embed it here — highest-ROI portfolio step.
-     ![Nexus Recall demo](docs/demo.gif) -->
+![Nexus Recall demo](docs/demo.gif)
 
 📖 **[How it works under the hood →](docs/how-it-works.html)** (standalone deep-dive page) · **[Conventions & FAQ →](docs/CONVENTIONS.md)**
 
