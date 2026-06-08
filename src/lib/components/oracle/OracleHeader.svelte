@@ -36,7 +36,7 @@
 	>
 		<span class="chip-dim">THINK</span>
 		<span class="chip-accent" style={$showReasoning ? '' : 'opacity:0.4'}
-			>{$showReasoning ? 'ON' : 'OFF'}</span
+			>{$showReasoning ? 'SHOWN' : 'HIDDEN'}</span
 		>
 	</button>
 	<div class="oracle-meta">{status}</div>
