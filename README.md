@@ -8,7 +8,7 @@
 
 ![Nexus Recall demo](docs/demo.gif)
 
-📖 **[How it works under the hood →](docs/how-it-works.html)** (standalone deep-dive page) · **[Conventions & FAQ →](docs/CONVENTIONS.md)**
+📖 **[How it works under the hood →](https://nexus-recall.vercel.app/how-it-works.html)** (live deep-dive page) · **[Conventions & FAQ →](docs/CONVENTIONS.md)**
 
 ---
 
