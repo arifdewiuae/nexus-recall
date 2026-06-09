@@ -54,6 +54,10 @@
 		focusedQuote = cite.quote;
 		focusedChunkId = cite.chunkId ?? null;
 		focusNonce += 1;
+		// On mobile the Tome pane is display:none while the Oracle tab is active, so
+		// scrollIntoView would target a hidden element and the user would see nothing
+		// happen. Reveal the Tome pane so the highlighted chunk is actually on screen.
+		mobileTab = 'tome';
 	}
 
 	function toggleScope() {
