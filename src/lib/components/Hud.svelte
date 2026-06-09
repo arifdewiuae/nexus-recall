@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { embeddingModel, modelStatus, downloadProgress, MODEL_LABELS } from '$lib/rag/embeddings';
-	import { readyCount, isIngesting } from '$lib/stores/ingestion';
+	import { readyCount, isIngesting, embeddingProgress } from '$lib/stores/ingestion';
 	import { theme, THEME } from '$lib/stores/theme';
 	import { EMBEDDING_MODEL, type EmbeddingModel } from '$lib/types';
 	import { ICON_SIZE, ICON_NAME } from '$lib/ui/tokens';
@@ -51,6 +51,10 @@
 		{#if $modelStatus === 'downloading'}
 			<span class="chip-accent" style="animation: blink 1.2s steps(2) infinite">
 				{$downloadProgress ? `${Math.round($downloadProgress.progress)}%` : 'LOADING…'}
+			</span>
+		{:else if $embeddingProgress}
+			<span class="chip-accent" style="animation: blink 1.2s steps(2) infinite">
+				{$embeddingProgress.done}/{$embeddingProgress.total}
 			</span>
 		{:else if $modelStatus === 'ready'}
 			<span style="color:var(--ok)">{MODEL_LABELS[$embeddingModel]}</span>

@@ -1325,6 +1325,61 @@ textarea {
 	color: var(--text-dim);
 }
 
+/* The currently-running card gets an accent ring + soft pulse so it's hard to
+   miss on either layout (the user reported the old counter as "not visible"). */
+.ingest-card.live {
+	box-shadow:
+		0 0 0 2px var(--crimson),
+		inset 2px 2px 0 0 var(--border-light),
+		inset -2px -2px 0 0 var(--border-dark);
+	animation: ingest-pulse 1.6s ease-in-out infinite;
+}
+@keyframes ingest-pulse {
+	0%,
+	100% {
+		box-shadow:
+			0 0 0 2px var(--crimson),
+			inset 2px 2px 0 0 var(--border-light),
+			inset -2px -2px 0 0 var(--border-dark);
+	}
+	50% {
+		box-shadow:
+			0 0 0 2px var(--crimson),
+			0 0 14px 0 var(--crimson),
+			inset 2px 2px 0 0 var(--border-light),
+			inset -2px -2px 0 0 var(--border-dark);
+	}
+}
+
+/* Download just started (no % yet) — sweep a highlight so the bar reads as live
+   instead of stuck at empty. */
+.stat-bar.indeterminate::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	width: 38%;
+	background: linear-gradient(90deg, transparent, var(--crimson), transparent);
+	opacity: 0.85;
+	animation: stat-sweep 1.1s linear infinite;
+}
+@keyframes stat-sweep {
+	0% {
+		transform: translateX(-100%);
+	}
+	100% {
+		transform: translateX(360%);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ingest-card.live {
+		animation: none;
+	}
+	.stat-bar.indeterminate::after {
+		animation: none;
+	}
+}
+
 /* ============================================================
    OFFLINE BANNER
    ============================================================ */
