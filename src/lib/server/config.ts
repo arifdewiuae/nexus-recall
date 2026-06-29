@@ -22,6 +22,16 @@ export const FIREWORKS_BASE_URL = 'https://api.fireworks.ai/inference/v1';
 /** Output-token cap. Tune together with TOP_K to stay inside the context window. */
 export const MAX_OUTPUT_TOKENS = 1024;
 
+/**
+ * Sampling temperature for answer generation. Set deliberately rather than left
+ * to the provider default (which differs across providers): this is a grounded
+ * RAG task where faithfulness matters, so we keep it on the low side — the Oracle
+ * persona comes from the system prompt, not from sampling randomness. The eval
+ * mirrors this value (evals/run.ts) so its faithfulness/similarity numbers
+ * describe the shipped behaviour.
+ */
+export const TEMPERATURE = 0.3;
+
 interface Rate {
 	/** USD per 1M input tokens. */
 	inputPerM: number;
