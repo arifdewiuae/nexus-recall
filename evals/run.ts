@@ -30,8 +30,13 @@ import { chunkCorpus } from './chunk';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const GEN_SAMPLE_SIZE = 5;
+const GEN_SAMPLE_SIZE = 10;
 const RELEVANCE_QUESTIONS = 3;
+
+// Sampling temperature for the generated answers under test. KEEP IN SYNC with
+// TEMPERATURE in src/lib/server/config.ts — the faithfulness/similarity numbers
+// only describe production if the eval samples answers the same way it ships.
+const TEMPERATURE = 0.3;
 
 // The eval mirrors the app's full retrieval pipeline:
 //   1. Vector — MiniLM-embed the query, cosine against every chunk (mirrors
@@ -378,7 +383,8 @@ async function generateAnswer(
 	const { text } = await generateText({
 		model,
 		system: SYSTEM_PROMPT,
-		messages: [{ role: 'user', content: `Context:\n\n${context}\n\nQuestion: ${question}` }]
+		messages: [{ role: 'user', content: `Context:\n\n${context}\n\nQuestion: ${question}` }],
+		temperature: TEMPERATURE
 	});
 	return text;
 }

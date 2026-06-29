@@ -149,7 +149,7 @@ pnpm eval           # RAG eval: BM25 recall@k / MRR + faithfulness, similarity &
 ### Results
 
 Measured on `evals/fixtures/` (20-question alchemy corpus; generation metrics
-sample 5 questions). Numbers come from a real `pnpm eval` run, not estimates.
+sample 10 questions). Numbers come from a real `pnpm eval` run, not estimates.
 
 **Retrieval** — three strategies side by side, so the eval mirrors the shipped
 path (MiniLM cosine → cross-encoder rerank) instead of a proxy. The corpus is
@@ -171,7 +171,7 @@ what surfaced a latent production bug — the cross-encoder reranker had never
 actually loaded (wrong model repo → silent fallback to vector order); see the note
 below.
 
-**Generation** (LLM-as-judge + embeddings; sampled over 5 questions):
+**Generation** (LLM-as-judge + embeddings; sampled over 10 questions):
 
 | Metric            | Score |  Gate   | Method                                                    |
 | ----------------- | :---: | :-----: | --------------------------------------------------------- |

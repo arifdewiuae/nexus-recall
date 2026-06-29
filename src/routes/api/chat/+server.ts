@@ -3,7 +3,13 @@ import { json } from '@sveltejs/kit';
 import { streamText, createUIMessageStream, createUIMessageStreamResponse } from 'ai';
 import { tryRerank } from '$lib/server/reranker';
 
-import { MODEL_IDS, MAX_OUTPUT_TOKENS, TOP_K, type Provider } from '$lib/server/config';
+import {
+	MODEL_IDS,
+	MAX_OUTPUT_TOKENS,
+	TEMPERATURE,
+	TOP_K,
+	type Provider
+} from '$lib/server/config';
 import { ChatRequestSchema, type ChunkRecord } from './chat.schema';
 import { resolveKeys, resolveProvider, MESSAGES, type ResolvedKeys } from './chat.keys';
 import { getModel } from './chat.models';
@@ -105,6 +111,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					system: SYSTEM_PROMPT,
 					messages: [{ role: 'user', content: buildUserMessage(context, question) }],
 					maxOutputTokens: MAX_OUTPUT_TOKENS,
+					temperature: TEMPERATURE,
 					abortSignal: request.signal,
 					onError: ({ error }) => log.error('streamText error', { error: String(error) })
 				})
