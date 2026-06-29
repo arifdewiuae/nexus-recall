@@ -113,6 +113,10 @@ server-side (never logged). Cloud-embedding keys are used client-side — see
   in code, not a runbook.
 - **Cost envelope** — usage + USD cost are computed server-side from day one and
   surfaced per answer; rates live in one `chat.pricing.ts` map.
+- **Security headers** — `vercel.json` sets `X-Frame-Options: DENY` (anti-
+  clickjacking), `X-Content-Type-Options: nosniff`, `Referrer-Policy:
+strict-origin-when-cross-origin`, a deny-by-default `Permissions-Policy`, and
+  HSTS — alongside the COOP/COEP the WASM worker needs.
 
 ---
 
@@ -220,14 +224,18 @@ as GitHub Actions secrets for the `main`-push run; PRs run the free retrieval ga
 
 ## Deployment
 
-Deploys to Vercel via `@sveltejs/adapter-vercel`. COOP/COEP headers (required for
-the Transformers.js / pdfjs WASM `SharedArrayBuffer`) are set in `vercel.json`.
+Deploys to Vercel via `@sveltejs/adapter-vercel`. Security headers live in
+`vercel.json`: COOP/COEP (required for the Transformers.js / pdfjs WASM
+`SharedArrayBuffer`) plus the standard hardening set (X-Frame-Options,
+X-Content-Type-Options, Referrer-Policy, Permissions-Policy, HSTS).
 Set `DEMO_KEYS_ENABLED=false` in production. Speed Insights + Analytics are wired
 in the root layout (no-op off-platform).
 
-**Next steps (documented, not shipped):** session rate limiting + content
-moderation (own-key local-first demo doesn't strictly need them); a strict CSP;
-a server proxy for cloud embeddings.
+**Next steps (documented, not shipped):** a strict `Content-Security-Policy`
+(held back deliberately — it has to allow `wasm-unsafe-eval` and the
+cross-origin-isolated worker without breaking the in-browser ML, so it needs its
+own testing pass); session rate limiting + content moderation (own-key
+local-first demo doesn't strictly need them); a server proxy for cloud embeddings.
 
 ---
 
