@@ -30,9 +30,12 @@ export default defineConfig({
 				]
 			},
 			workbox: {
-				// Don't precache model files — they're large and fetched on demand
+				// Don't precache model files — they're large and fetched on demand.
+				// globIgnores is belt-and-suspenders: it keeps the MiniLM / cross-encoder
+				// weights (ONNX), the ORT WASM runtime, and any Xenova assets out of the
+				// precache manifest even if globPatterns is later widened to match them.
 				globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-				globIgnores: ['**/ort-wasm*', '**/xenova*'],
+				globIgnores: ['**/ort-wasm*', '**/xenova*', '**/*.onnx'],
 				runtimeCaching: [
 					{
 						urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
