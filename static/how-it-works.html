@@ -975,8 +975,9 @@
                 mirrors what production retrieves — not a proxy:</li>
               <li><b>BM25</b> (lexical, deterministic) — the always-on PR gate, no model download</li>
               <li><b>Vector</b> (MiniLM cosine) — the app's <code class="inl">similaritySearch</code></li>
-              <li><b>Vector + rerank</b> (cross-encoder) — the full production path; lifts
-                <b>recall@1 95% → 100%</b> and <b>MRR 98% → 100%</b> on this corpus</li>
+              <li><b>Vector + rerank</b> (cross-encoder) — the full production path; on the same
+                production-faithful chunks (Markdown 800/120 + heading-prepend) it holds
+                <b>recall@1 100%</b> / <b>MRR 100%</b> where lexical BM25 dilutes to 85% / 93%</li>
               <li>Gate: <b>recall@3 ≥ 0.80</b> on both BM25 and the production path</li>
             </ul>
           </div>

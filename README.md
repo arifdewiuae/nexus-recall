@@ -152,20 +152,24 @@ Measured on `evals/fixtures/` (20-question alchemy corpus; generation metrics
 sample 5 questions). Numbers come from a real `pnpm eval` run, not estimates.
 
 **Retrieval** — three strategies side by side, so the eval mirrors the shipped
-path (MiniLM cosine → cross-encoder rerank) instead of a proxy. BM25 stays the
+path (MiniLM cosine → cross-encoder rerank) instead of a proxy. The corpus is
+chunked exactly as production chunks an upload (`MarkdownTextSplitter` 800/120 +
+heading-prepend), so these numbers describe the real pipeline. BM25 stays the
 free, deterministic PR gate; the vector paths run on `main` (no API key — local
 models).
 
 | Strategy        | R@1  | R@3  | R@5  | MRR  | Mirrors                              |
 | --------------- | :--: | :--: | :--: | :--: | ------------------------------------ |
-| BM25 (lexical)  | 95%  | 100% | 100% | 98%  | always-on deterministic gate         |
+| BM25 (lexical)  | 85%  | 100% | 100% | 93%  | always-on deterministic gate         |
 | Vector (MiniLM) | 95%  | 100% | 100% | 98%  | `vector-store.ts` similaritySearch   |
 | Vector + rerank | 100% | 100% | 100% | 100% | full production path (`reranker.ts`) |
 
-The rerank step lifts recall@1 95% → 100% and MRR 98% → 100% (R@3/R@5 are
-saturated on this 20-question corpus). Adding this comparison is what surfaced a
-latent production bug — the cross-encoder reranker had never actually loaded
-(wrong model repo → silent fallback to vector order); see the note below.
+On production-faithful (larger) chunks the lexical BM25 signal dilutes — R@1 85%,
+MRR 93% — but the shipped vector + cross-encoder path holds at recall@1 100% / MRR
+100% (R@3/R@5 are saturated on this 20-question corpus). Adding this comparison is
+what surfaced a latent production bug — the cross-encoder reranker had never
+actually loaded (wrong model repo → silent fallback to vector order); see the note
+below.
 
 **Generation** (LLM-as-judge + embeddings; sampled over 5 questions):
 
@@ -173,7 +177,7 @@ latent production bug — the cross-encoder reranker had never actually loaded
 | ----------------- | :---: | :-----: | --------------------------------------------------------- |
 | Faithfulness      |  99%  |  ≥ 80%  | LLM-as-judge (Claude Haiku → Fireworks)                   |
 | Answer Similarity |  86%  |  ≥ 80%  | cosine(answer, gold answer), `text-embedding-3-small`     |
-| Answer Relevance  |  70%  | ≥ 65%\* | RAGAS-style: cosine of regenerated questions vs. original |
+| Answer Relevance  |  74%  | ≥ 65%\* | RAGAS-style: cosine of regenerated questions vs. original |
 
 \* Answer Relevance is **reported with a regression floor, not held to 0.8**. It
 averages the cosine between the original question and 3 questions an LLM

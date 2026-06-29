@@ -16,7 +16,6 @@
  * Exit codes: 0 = all thresholds met, 1 = regression detected
  */
 
-import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { generateText, generateObject } from 'ai';
@@ -27,11 +26,10 @@ import { fileURLToPath } from 'node:url';
 import { resolveEmbedder, localMiniLMEmbedder, type Embedder } from './embed';
 import { rerank } from './reranker';
 import { cosine } from './cosine';
+import { chunkCorpus } from './chunk';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const CHUNK_SIZE = 500;
-const CHUNK_OVERLAP = 50;
 const GEN_SAMPLE_SIZE = 5;
 const RELEVANCE_QUESTIONS = 3;
 
@@ -432,13 +430,11 @@ async function main(): Promise<void> {
 	const qaPairs: QAPair[] = JSON.parse(readFileSync(qaPairsPath, 'utf-8'));
 
 	// ── Chunk the corpus ─────────────────────────────────────────────────────
+	// Chunked exactly as production does (see evals/chunk.ts → src/lib/rag/chunker.ts):
+	// MarkdownTextSplitter 800/120 with heading-prepend, so the retrieval numbers
+	// describe the shipped pipeline rather than a cheaper proxy.
 
-	const splitter = new RecursiveCharacterTextSplitter({
-		chunkSize: CHUNK_SIZE,
-		chunkOverlap: CHUNK_OVERLAP
-	});
-	const splits = await splitter.splitText(corpusText);
-	const chunks: Chunk[] = splits.map((text, i) => ({ id: `corpus::${i}`, chunkIndex: i, text }));
+	const chunks: Chunk[] = await chunkCorpus(corpusText, 'corpus.md');
 
 	console.log('\n=== Nexus Recall — RAG Evaluation ===');
 	console.log(`Corpus: corpus.md | ${chunks.length} chunks | ${qaPairs.length} questions`);
