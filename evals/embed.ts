@@ -65,10 +65,19 @@ function openAIEmbedder(apiKey: string): Embedder {
 }
 
 /**
- * Pick the embedding backend: OpenAI when a key is present (canonical RAGAS,
- * better scale), otherwise local MiniLM.
+ * The exact embedder the app ships (src/lib/rag/embedding.worker.ts): local
+ * MiniLM, mean-pooled and L2-normalized. Use this for the *retrieval* eval so it
+ * mirrors production — never OpenAI, which the app doesn't use for retrieval.
+ */
+export function localMiniLMEmbedder(): Embedder {
+	return { label: 'local MiniLM (Xenova/all-MiniLM-L6-v2)', embed: localEmbed };
+}
+
+/**
+ * Pick the embedding backend for the *Answer Relevance* metric: OpenAI when a key
+ * is present (canonical RAGAS, better paraphrase scale), otherwise local MiniLM.
  */
 export function resolveEmbedder(): Embedder {
 	if (process.env.OPENAI_API_KEY) return openAIEmbedder(process.env.OPENAI_API_KEY);
-	return { label: 'local MiniLM (Xenova/all-MiniLM-L6-v2)', embed: localEmbed };
+	return localMiniLMEmbedder();
 }

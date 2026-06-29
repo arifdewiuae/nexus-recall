@@ -138,9 +138,10 @@ pnpm eval           # RAG eval: BM25 recall@k / MRR + faithfulness, similarity &
   fallback, and input sanitization.
 - **E2E** (Playwright) — golden path with the AI stream mocked at the exact
   AI SDK v6 wire format (`x-vercel-ai-ui-message-stream: v1`).
-- **Evals** — `pnpm eval` runs offline retrieval metrics (BM25 recall@k, MRR)
-  plus three optional generation metrics when an LLM key is present, and appends
-  every run to `evals/scores.json`. See **Results** below.
+- **Evals** — `pnpm eval` scores retrieval three ways (BM25, vector, and the
+  production vector + cross-encoder rerank path) plus three optional generation
+  metrics when an LLM key is present, and appends every run to
+  `evals/scores.json`. See **Results** below.
 - **CI** (GitHub Actions, pnpm + Node 24, SHA-pinned actions) — lint → typecheck
   → unit; a separate E2E job; and the evals gate (retrieval-only on
   retrieval-affecting PRs, full gate on every push to `main`).
@@ -150,13 +151,29 @@ pnpm eval           # RAG eval: BM25 recall@k / MRR + faithfulness, similarity &
 Measured on `evals/fixtures/` (20-question alchemy corpus; generation metrics
 sample 5 questions). Numbers come from a real `pnpm eval` run, not estimates.
 
+**Retrieval** — three strategies side by side, so the eval mirrors the shipped
+path (MiniLM cosine → cross-encoder rerank) instead of a proxy. BM25 stays the
+free, deterministic PR gate; the vector paths run on `main` (no API key — local
+models).
+
+| Strategy        | R@1  | R@3  | R@5  | MRR  | Mirrors                              |
+| --------------- | :--: | :--: | :--: | :--: | ------------------------------------ |
+| BM25 (lexical)  | 95%  | 100% | 100% | 98%  | always-on deterministic gate         |
+| Vector (MiniLM) | 95%  | 100% | 100% | 98%  | `vector-store.ts` similaritySearch   |
+| Vector + rerank | 100% | 100% | 100% | 100% | full production path (`reranker.ts`) |
+
+The rerank step lifts recall@1 95% → 100% and MRR 98% → 100% (R@3/R@5 are
+saturated on this 20-question corpus). Adding this comparison is what surfaced a
+latent production bug — the cross-encoder reranker had never actually loaded
+(wrong model repo → silent fallback to vector order); see the note below.
+
+**Generation** (LLM-as-judge + embeddings; sampled over 5 questions):
+
 | Metric            | Score |  Gate   | Method                                                    |
 | ----------------- | :---: | :-----: | --------------------------------------------------------- |
-| Context Recall@3  | 100%  |  ≥ 80%  | BM25 lexical retrieval, offline & deterministic           |
-| MRR               |  98%  |    —    | BM25 lexical retrieval                                    |
 | Faithfulness      |  99%  |  ≥ 80%  | LLM-as-judge (Claude Haiku → Fireworks)                   |
-| Answer Similarity |  85%  |  ≥ 80%  | cosine(answer, gold answer), `text-embedding-3-small`     |
-| Answer Relevance  |  74%  | ≥ 65%\* | RAGAS-style: cosine of regenerated questions vs. original |
+| Answer Similarity |  86%  |  ≥ 80%  | cosine(answer, gold answer), `text-embedding-3-small`     |
+| Answer Relevance  |  70%  | ≥ 65%\* | RAGAS-style: cosine of regenerated questions vs. original |
 
 \* Answer Relevance is **reported with a regression floor, not held to 0.8**. It
 averages the cosine between the original question and 3 questions an LLM
@@ -170,6 +187,17 @@ scores ~0.3) without pretending 0.8 is achievable for this metric.
 > 📊 **[Why Answer Relevance sits at ~0.73 →](docs/eval-relevance-explained.html)** — a
 > single-page visual walkthrough (real run data) of the averaging and embedding-geometry
 > effects behind the number.
+
+**The reranker bug the eval caught.** The eval originally scored only BM25 — a
+proxy for retrieval, not the path the app ships. Adding the vector + cross-encoder
+comparison so it mirrors production immediately exposed that the reranker had
+_never run_: `RERANKER_MODEL_ID` pointed at `cross-encoder/ms-marco-MiniLM-L-6-v2`,
+whose HF repo ships no `model_quantized.onnx`, so Transformers.js failed to load it
+and `tryRerank`'s `catch` silently returned the un-reranked order. Fix: point at
+the `Xenova/` ONNX mirror and score pairs via `AutoModelForSequenceClassification`
+(the high-level `text-classification` pipeline rejects `{text, text_pair}` in
+Transformers.js 2.x). The lesson — _a fallback hides a dead component until an eval
+exercises the real path_ — is the whole reason an eval mirrors production.
 
 **LLM-as-judge pattern.** The faithfulness judge and question regeneration use the
 AI SDK's `generateObject` with a Zod schema, so the model is constrained to return

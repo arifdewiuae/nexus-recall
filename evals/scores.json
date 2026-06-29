@@ -1,6 +1,6 @@
 [
   {
-    "timestamp": "2026-06-29T13:10:17.208Z",
+    "timestamp": "2026-06-29T13:46:51.001Z",
     "corpus": "corpus.md",
     "questionCount": 20,
     "chunkCount": 19,
@@ -8,9 +8,17 @@
     "recallAt3": 1,
     "recallAt5": 1,
     "mrr": 0.975,
-    "faithfulness": 0.9800000000000001,
-    "answerSimilarity": 0.8509852723694052,
-    "answerRelevance": 0.7458950982214747,
+    "vectorRecallAt1": 0.95,
+    "vectorRecallAt3": 1,
+    "vectorRecallAt5": 1,
+    "vectorMrr": 0.975,
+    "rerankRecallAt1": 1,
+    "rerankRecallAt3": 1,
+    "rerankRecallAt5": 1,
+    "rerankMrr": 1,
+    "faithfulness": 0.99,
+    "answerSimilarity": 0.8552643157329072,
+    "answerRelevance": 0.7048134966662081,
     "generationSampleSize": 5,
     "thresholdsMet": true
   }
