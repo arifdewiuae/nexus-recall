@@ -65,16 +65,31 @@ export const POST: RequestHandler = async ({ request }) => {
 	const modelId = MODEL_IDS[provider];
 	const model = getModel(provider, keys);
 
-	const ranked = (await tryRerank(question, chunks)).slice(0, TOP_K);
+	const retrieveStart = performance.now();
+	const reranked = await tryRerank(question, chunks);
+	const retrieveMs = Math.round(performance.now() - retrieveStart);
+	const ranked = reranked.slice(0, TOP_K);
 	const context = assembleContext(ranked);
 	const citations = buildCitations(ranked);
+
+	// Rerank delta — how the cross-encoder reordered the vector candidates. A dead
+	// reranker returns them untouched, so `reordered: false` / `topMovedFrom: 0` on
+	// every request is the exact trace signature of the bug we just fixed; this
+	// makes a future regression visible instead of silent.
+	const candidateIds = chunks.map((c) => c.id);
+	const rerankedIds = reranked.map((c) => c.id);
+	const reordered = candidateIds.some((id, i) => rerankedIds[i] !== id);
+	const topMovedFrom = rerankedIds.length ? candidateIds.indexOf(rerankedIds[0]) : -1;
 
 	log.info('rag.retrieve', {
 		provider,
 		modelId,
+		candidateCount: chunks.length,
 		rankedChunkIds: ranked.map((c) => c.id),
 		chunkCount: ranked.length,
-		contextChars: context.length
+		contextChars: context.length,
+		retrieveMs,
+		rerank: { reordered, topMovedFrom }
 	});
 
 	const stream = createUIMessageStream({

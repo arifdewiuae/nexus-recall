@@ -69,6 +69,8 @@ interface FinishContext {
 	reasoningText: string;
 	log: Logger;
 	chunk: FinishChunk;
+	/** performance.now() captured when streaming began — for end-to-end latency. */
+	startedAt: number;
 }
 
 /**
@@ -79,7 +81,8 @@ interface FinishContext {
  * additionally surfaced as a safe message.
  */
 async function handleFinish(ctx: FinishContext): Promise<void> {
-	const { writer, result, provider, modelId, citations, reasoningText, log, chunk } = ctx;
+	const { writer, result, provider, modelId, citations, reasoningText, log, chunk, startedAt } =
+		ctx;
 
 	const usage = result.totalUsage ? await result.totalUsage : undefined;
 	const finishReason =
@@ -92,7 +95,8 @@ async function handleFinish(ctx: FinishContext): Promise<void> {
 		finishReason,
 		inputTokens: usage?.inputTokens,
 		outputTokens: usage?.outputTokens,
-		costUsd
+		costUsd,
+		latencyMs: Math.round(performance.now() - startedAt)
 	});
 
 	writer.write({
@@ -145,6 +149,7 @@ export async function interceptReasoning({
 }: InterceptReasoningOptions): Promise<void> {
 	writer.write({ type: 'message-metadata', messageMetadata: { citations } });
 
+	const startedAt = performance.now();
 	let reasoningText = '';
 	let reasoningFlushCount = 0;
 
@@ -176,7 +181,8 @@ export async function interceptReasoning({
 					citations,
 					reasoningText,
 					log,
-					chunk: value
+					chunk: value,
+					startedAt
 				});
 			} else if (isObject(value)) {
 				// Forward all other chunks to the client unchanged.
