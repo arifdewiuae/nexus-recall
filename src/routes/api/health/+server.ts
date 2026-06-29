@@ -24,6 +24,8 @@ export const GET: RequestHandler = async () => {
 			fireworks: { model: MODEL_IDS.fireworks, demoKeyConfigured: !!env.FIREWORKS_API_KEY },
 			anthropic: { model: MODEL_IDS.anthropic, demoKeyConfigured: !!env.ANTHROPIC_API_KEY }
 		},
+		// `warm` is true only once the model has loaded *and* passed its
+		// reorder self-test, so a dead reranker reads as not-warm here.
 		reranker: { model: RERANKER_MODEL_ID, warm: isRerankerWarm() }
 	});
 };
