@@ -1,9 +1,14 @@
 name: Evals
 
-# RAG quality gate. Runs on PRs that touch retrieval-affecting code or the
-# ground-truth fixtures — a chunking / context / embedding change "looks like a
-# refactor" but can silently move retrieval quality, so gate it.
+# RAG quality gate.
+#   · PRs touching retrieval-affecting code or the ground-truth fixtures — a
+#     chunking / context / embedding change "looks like a refactor" but can
+#     silently move retrieval quality, so gate it (free, deterministic BM25).
+#   · Every push to main — runs the FULL gate including the LLM-as-judge
+#     faithfulness + answer-relevance metrics, using the API-key secret below.
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
     paths:
@@ -33,9 +38,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # No API key in CI → retrieval metrics only (BM25 recall@k / MRR), which
-      # are free and deterministic. The faithfulness LLM-judge runs locally /
-      # pre-merge where a key is available. `pnpm run eval` exits non-zero if
-      # recall@3 < 0.8.
-      - name: Run evals (retrieval gate)
+      # On main push the secrets are present → the full gate runs (BM25 recall@k /
+      # MRR + LLM-judge faithfulness + embedding-based answer similarity & relevance),
+      # failing if recall@3 < 0.8, faithfulness < 0.8, answer similarity < 0.8, or
+      # answer relevance < 0.65. ANTHROPIC_API_KEY drives the judge + question
+      # regeneration; OPENAI_API_KEY drives the embeddings (text-embedding-3-small)
+      # the similarity/relevance metrics are calibrated against.
+      # On PRs (and forks) the secrets are absent → free, deterministic retrieval
+      # metrics only. `pnpm run eval` skips the generation metrics without a key.
+      - name: Run evals (RAG quality gate)
         run: pnpm run eval
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

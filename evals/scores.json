@@ -1,6 +1,6 @@
 [
   {
-    "timestamp": "2026-05-20T14:53:09.859Z",
+    "timestamp": "2026-06-29T13:10:17.208Z",
     "corpus": "corpus.md",
     "questionCount": 20,
     "chunkCount": 19,
@@ -8,39 +8,10 @@
     "recallAt3": 1,
     "recallAt5": 1,
     "mrr": 0.975,
-    "thresholdsMet": true
-  },
-  {
-    "timestamp": "2026-05-20T14:53:52.434Z",
-    "corpus": "corpus.md",
-    "questionCount": 20,
-    "chunkCount": 19,
-    "recallAt1": 0.95,
-    "recallAt3": 1,
-    "recallAt5": 1,
-    "mrr": 0.975,
-    "thresholdsMet": true
-  },
-  {
-    "timestamp": "2026-06-07T16:17:52.697Z",
-    "corpus": "corpus.md",
-    "questionCount": 20,
-    "chunkCount": 19,
-    "recallAt1": 0.95,
-    "recallAt3": 1,
-    "recallAt5": 1,
-    "mrr": 0.975,
-    "thresholdsMet": true
-  },
-  {
-    "timestamp": "2026-06-07T19:31:59.094Z",
-    "corpus": "corpus.md",
-    "questionCount": 20,
-    "chunkCount": 19,
-    "recallAt1": 0.95,
-    "recallAt3": 1,
-    "recallAt5": 1,
-    "mrr": 0.975,
+    "faithfulness": 0.9800000000000001,
+    "answerSimilarity": 0.8509852723694052,
+    "answerRelevance": 0.7458950982214747,
+    "generationSampleSize": 5,
     "thresholdsMet": true
   }
 ]

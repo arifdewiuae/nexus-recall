@@ -2,101 +2,141 @@
 	{
 		"id": "q01",
 		"question": "What is the primary goal of transmutation in alchemy?",
-		"anchorPhrases": ["lead into gold", "Philosopher's Stone"]
+		"anchorPhrases": ["lead into gold", "Philosopher's Stone"],
+		"answer": "To transmute base metals such as lead into gold, achieved through the Philosopher's Stone.",
+		"section": "Chapter 1 — Transmutation & the Philosopher's Stone"
 	},
 	{
 		"id": "q02",
 		"question": "What are the four classical elements in alchemical theory?",
-		"anchorPhrases": ["earth, water, fire", "classical elements"]
+		"anchorPhrases": ["earth, water, fire", "classical elements"],
+		"answer": "Earth, water, fire, and air — the four classical elements underlying alchemical theory.",
+		"section": "Chapter 1 — Classical Elements"
 	},
 	{
 		"id": "q03",
 		"question": "What qualities were assigned to lead in alchemical theory?",
-		"anchorPhrases": ["cold and dry"]
+		"anchorPhrases": ["cold and dry"],
+		"answer": "Lead was considered cold and dry.",
+		"section": "Chapter 1 — Classical Elements"
 	},
 	{
 		"id": "q04",
 		"question": "What is the Elixir of Life?",
-		"anchorPhrases": ["Elixir of Life", "Elixir Vitae", "immortality"]
+		"anchorPhrases": ["Elixir of Life", "Elixir Vitae", "immortality"],
+		"answer": "The Elixir of Life (Elixir Vitae) is a preparation said to grant longevity or immortality and to cure disease.",
+		"section": "Chapter 1 — The Elixir of Life"
 	},
 	{
 		"id": "q05",
 		"question": "What is the Prima Materia?",
-		"anchorPhrases": ["First Matter", "Prima Materia"]
+		"anchorPhrases": ["First Matter", "Prima Materia"],
+		"answer": "The Prima Materia, or First Matter, is the formless base substance from which all things are derived and on which the Great Work begins.",
+		"section": "Chapter 2 — Prima Materia"
 	},
 	{
 		"id": "q06",
 		"question": "What are the three principles in Paracelsus's tria prima?",
-		"anchorPhrases": ["tria prima", "sulfur", "mercury", "salt"]
+		"anchorPhrases": ["tria prima", "sulfur", "mercury", "salt"],
+		"answer": "Paracelsus's tria prima consists of three principles: sulfur, mercury, and salt.",
+		"section": "Chapter 2 — Paracelsus's Tria Prima"
 	},
 	{
 		"id": "q07",
 		"question": "What does sulfur represent in Paracelsus's system?",
-		"anchorPhrases": ["sulfur", "soul"]
+		"anchorPhrases": ["sulfur", "soul"],
+		"answer": "In Paracelsus's tria prima, sulfur represents the soul — the principle of combustibility and form.",
+		"section": "Chapter 2 — Paracelsus's Tria Prima"
 	},
 	{
 		"id": "q08",
 		"question": "Which celestial body was gold associated with?",
-		"anchorPhrases": ["Gold", "Sun"]
+		"anchorPhrases": ["Gold", "Sun"],
+		"answer": "Gold was associated with the Sun.",
+		"section": "Chapter 3 — The Seven Metals"
 	},
 	{
 		"id": "q09",
 		"question": "Which planet corresponded to lead?",
-		"anchorPhrases": ["Lead", "Saturn"]
+		"anchorPhrases": ["Lead", "Saturn"],
+		"answer": "Lead corresponded to the planet Saturn.",
+		"section": "Chapter 3 — The Seven Metals"
 	},
 	{
 		"id": "q10",
 		"question": "Which metal was linked to the planet Mars?",
-		"anchorPhrases": ["Iron", "Mars"]
+		"anchorPhrases": ["Iron", "Mars"],
+		"answer": "Iron was linked to the planet Mars.",
+		"section": "Chapter 3 — The Seven Metals"
 	},
 	{
 		"id": "q11",
 		"question": "What was distillation used for in alchemical laboratories?",
-		"anchorPhrases": ["distillation", "volatile", "vaporized"]
+		"anchorPhrases": ["distillation", "volatile", "vaporized"],
+		"answer": "Distillation was used to separate and purify substances by vaporizing the volatile components and condensing them back to liquid.",
+		"section": "Chapter 4 — Laboratory Techniques"
 	},
 	{
 		"id": "q12",
 		"question": "What is calcination and what does it produce?",
-		"anchorPhrases": ["calcination", "calx", "powder"]
+		"anchorPhrases": ["calcination", "calx", "powder"],
+		"answer": "Calcination is heating a substance until it breaks down into a dry powder called a calx.",
+		"section": "Chapter 4 — Laboratory Techniques"
 	},
 	{
 		"id": "q13",
 		"question": "What is sublimation in alchemy?",
-		"anchorPhrases": ["sublimation", "vaporized directly"]
+		"anchorPhrases": ["sublimation", "vaporized directly"],
+		"answer": "Sublimation is the process in which a solid is vaporized directly into a gas without passing through a liquid phase.",
+		"section": "Chapter 4 — Laboratory Techniques"
 	},
 	{
 		"id": "q14",
 		"question": "What role does putrefaction play in the Great Work?",
-		"anchorPhrases": ["putrefaction", "blackening", "nigredo"]
+		"anchorPhrases": ["putrefaction", "blackening", "nigredo"],
+		"answer": "Putrefaction is the decay or blackening stage (nigredo) that breaks matter down so it can be reborn in the Great Work.",
+		"section": "Chapter 5 — The Magnum Opus"
 	},
 	{
 		"id": "q15",
 		"question": "What are the four stages of the Magnum Opus?",
-		"anchorPhrases": ["nigredo", "albedo", "citrinitas", "rubedo"]
+		"anchorPhrases": ["nigredo", "albedo", "citrinitas", "rubedo"],
+		"answer": "The four stages of the Magnum Opus are nigredo, albedo, citrinitas, and rubedo.",
+		"section": "Chapter 5 — The Magnum Opus"
 	},
 	{
 		"id": "q16",
 		"question": "What does rubedo represent?",
-		"anchorPhrases": ["rubedo", "reddening"]
+		"anchorPhrases": ["rubedo", "reddening"],
+		"answer": "Rubedo, the reddening, is the final stage of the Great Work representing completion and the achievement of the Philosopher's Stone.",
+		"section": "Chapter 5 — The Magnum Opus"
 	},
 	{
 		"id": "q17",
 		"question": "What alchemical work did Isaac Newton pursue?",
-		"anchorPhrases": ["Newton", "alchemical"]
+		"anchorPhrases": ["Newton", "alchemical"],
+		"answer": "Isaac Newton pursued extensive alchemical research, writing voluminous manuscripts on transmutation alongside his work in physics.",
+		"section": "Chapter 6 — From Alchemy to Chemistry"
 	},
 	{
 		"id": "q18",
 		"question": "Who was Jabir ibn Hayyan?",
-		"anchorPhrases": ["Jabir ibn Hayyan", "Arab polymath"]
+		"anchorPhrases": ["Jabir ibn Hayyan", "Arab polymath"],
+		"answer": "Jabir ibn Hayyan was an Arab polymath regarded as a father of early chemistry who systematized alchemical practice.",
+		"section": "Chapter 6 — From Alchemy to Chemistry"
 	},
 	{
 		"id": "q19",
 		"question": "What did Robert Boyle argue in The Sceptical Chymist?",
-		"anchorPhrases": ["Sceptical Chymist", "Boyle", "corpuscles"]
+		"anchorPhrases": ["Sceptical Chymist", "Boyle", "corpuscles"],
+		"answer": "In The Sceptical Chymist, Robert Boyle argued against the classical elements, proposing that matter is composed of corpuscles — an early step toward modern chemistry.",
+		"section": "Chapter 6 — From Alchemy to Chemistry"
 	},
 	{
 		"id": "q20",
 		"question": "How did Lavoisier contribute to the end of alchemical theory?",
-		"anchorPhrases": ["Lavoisier", "oxygen", "conservation of mass"]
+		"anchorPhrases": ["Lavoisier", "oxygen", "conservation of mass"],
+		"answer": "Antoine Lavoisier identified oxygen's role in combustion and established the conservation of mass, replacing alchemical theory with rigorous modern chemistry.",
+		"section": "Chapter 6 — From Alchemy to Chemistry"
 	}
 ]
