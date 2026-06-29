@@ -43,5 +43,11 @@ export const TOP_K = 8;
 /** Hard char backstop on assembled context (≈ 6k tokens) so oversized chunks can't blow the budget. */
 export const CONTEXT_CHAR_BUDGET = 24_000;
 
-/** Cross-encoder model used for reranking. */
-export const RERANKER_MODEL_ID = 'cross-encoder/ms-marco-MiniLM-L-6-v2';
+/**
+ * Cross-encoder model used for reranking. Must be a transformers.js-compatible
+ * mirror that ships ONNX weights + tokenizer — the upstream
+ * `cross-encoder/ms-marco-MiniLM-L-6-v2` repo has no `model_quantized.onnx`, so
+ * transformers.js can't load it (the load fails and the reranker silently
+ * no-ops). The `Xenova/` mirror is the same model, ONNX-exported for the browser.
+ */
+export const RERANKER_MODEL_ID = 'Xenova/ms-marco-MiniLM-L-6-v2';

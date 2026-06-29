@@ -38,16 +38,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # On main push the secrets are present → the full gate runs (BM25 recall@k /
-      # MRR + LLM-judge faithfulness + embedding-based answer similarity & relevance),
-      # failing if recall@3 < 0.8, faithfulness < 0.8, answer similarity < 0.8, or
-      # answer relevance < 0.65. ANTHROPIC_API_KEY drives the judge + question
-      # regeneration; OPENAI_API_KEY drives the embeddings (text-embedding-3-small)
-      # the similarity/relevance metrics are calibrated against.
-      # On PRs (and forks) the secrets are absent → free, deterministic retrieval
-      # metrics only. `pnpm run eval` skips the generation metrics without a key.
+      # On main push: the full gate. EVAL_VECTOR is on → the production retrieval
+      # path runs (MiniLM cosine + cross-encoder rerank, downloaded from the HF
+      # CDN, no key needed) alongside BM25; the secrets enable the LLM-judge
+      # faithfulness + embedding-based answer similarity & relevance. Fails if
+      # BM25 recall@3 < 0.8, vector+rerank recall@3 < 0.8, faithfulness < 0.8,
+      # answer similarity < 0.8, or answer relevance < 0.65. ANTHROPIC_API_KEY
+      # drives the judge + question regeneration; OPENAI_API_KEY drives the
+      # embeddings (text-embedding-3-small) the similarity/relevance metrics use.
+      #
+      # On PRs (and forks): EVAL_VECTOR=0 and the secrets are absent → free,
+      # deterministic BM25 retrieval gate only (no model downloads, no LLM calls).
       - name: Run evals (RAG quality gate)
         run: pnpm run eval
         env:
+          EVAL_VECTOR: ${{ github.event_name == 'pull_request' && '0' || '1' }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

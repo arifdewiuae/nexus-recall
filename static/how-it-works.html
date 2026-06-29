@@ -971,19 +971,32 @@
           <div class="card">
             <h3>📏 Retrieval (free, in CI)</h3>
             <ul class="clean">
-              <li><b>Recall@k</b> — are the right chunks in the top k? (BM25, no LLM)</li>
-              <li><b>MRR</b> — is the best chunk ranked high?</li>
-              <li>Gate: <b>recall@3 ≥ 0.80</b> — a PR touching chunking / context / embeddings runs it</li>
+              <li><b>Recall@k</b> &amp; <b>MRR</b> for three strategies side by side, so the eval
+                mirrors what production retrieves — not a proxy:</li>
+              <li><b>BM25</b> (lexical, deterministic) — the always-on PR gate, no model download</li>
+              <li><b>Vector</b> (MiniLM cosine) — the app's <code class="inl">similaritySearch</code></li>
+              <li><b>Vector + rerank</b> (cross-encoder) — the full production path; lifts
+                <b>recall@1 95% → 100%</b> and <b>MRR 98% → 100%</b> on this corpus</li>
+              <li>Gate: <b>recall@3 ≥ 0.80</b> on both BM25 and the production path</li>
             </ul>
           </div>
           <div class="card">
             <h3>⚖ Generation (LLM-as-judge)</h3>
             <ul class="clean">
-              <li><b>Faithfulness</b> — is every claim grounded in the context?</li>
-              <li>Gate: <b>faithfulness ≥ 0.70</b> (sampled; needs an API key)</li>
+              <li><b>Faithfulness</b> — is every claim grounded in the context? (Gate <b>≥ 0.80</b>)</li>
+              <li><b>Answer similarity</b> — cosine vs. a gold answer (Gate ≥ 0.80)</li>
+              <li><b>Answer relevance</b> — RAGAS question-regen (reported, 0.65 floor)</li>
               <li>Scores append to <code class="inl">evals/scores.json</code> — a flat history is a cheap regression detector</li>
             </ul>
           </div>
+        </div>
+        <div class="callout">
+          <b>The bug this caught:</b> the eval used to score BM25 only — a proxy, not the shipped
+          retrieval path. When we made it mirror production, it surfaced that the cross-encoder
+          reranker had <i>never actually run</i>: its model id pointed at a repo with no ONNX weights,
+          so the load failed and the <code class="inl">try/catch</code> fallback silently returned the
+          un-reranked order. The lesson: a fallback hides a dead component unless an eval exercises the
+          real path. Fix in, the eval now proves the reranker earns its latency.
         </div>
         <div class="callout">
           <b>The discipline:</b> never ship a prompt, chunking, or embedding-model change without

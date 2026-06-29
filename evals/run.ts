@@ -24,7 +24,8 @@ import { z } from 'zod';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveEmbedder, type Embedder } from './embed';
+import { resolveEmbedder, localMiniLMEmbedder, type Embedder } from './embed';
+import { rerank } from './reranker';
 import { cosine } from './cosine';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -33,6 +34,19 @@ const CHUNK_SIZE = 500;
 const CHUNK_OVERLAP = 50;
 const GEN_SAMPLE_SIZE = 5;
 const RELEVANCE_QUESTIONS = 3;
+
+// The eval mirrors the app's full retrieval pipeline:
+//   1. Vector — MiniLM-embed the query, cosine against every chunk (mirrors
+//      src/lib/rag/vector-store.ts similaritySearch), take top-SEARCH_TOP_K.
+//   2. Vector + rerank — cross-encoder rerank those candidates down to
+//      RERANK_TOP_K (mirrors src/lib/server/reranker.ts → config TOP_K).
+const SEARCH_TOP_K = 10; // mirrors src/lib/components/oracle/oracle.ts
+const RERANK_TOP_K = 8; // mirrors TOP_K in src/lib/server/config.ts
+
+// The vector paths need the MiniLM + cross-encoder models (no API key, but a
+// download + native `sharp`). On by default so `pnpm eval` mirrors production;
+// set EVAL_VECTOR=0 to skip (the PR CI job does, keeping that gate BM25-only).
+const RUN_VECTOR = process.env.EVAL_VECTOR !== '0';
 
 // CI gate thresholds.
 // Answer relevancy (RAGAS question-regen) sits stably at ~0.73 for terse factual
@@ -44,6 +58,9 @@ const THRESHOLD_RECALL_3 = 0.8;
 const THRESHOLD_FAITHFULNESS = 0.8;
 const THRESHOLD_ANSWER_SIMILARITY = 0.8;
 const THRESHOLD_ANSWER_RELEVANCE = 0.65;
+// The production retrieval path (vector cosine → cross-encoder rerank) is gated
+// when it runs; BM25 is the always-on deterministic gate.
+const THRESHOLD_VECTOR_RECALL_3 = 0.8;
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -51,6 +68,18 @@ interface Chunk {
 	id: string;
 	chunkIndex: number;
 	text: string;
+}
+
+interface EmbeddedChunk extends Chunk {
+	vector: number[];
+}
+
+interface RetrievalMetrics {
+	recallAt1: number;
+	recallAt3: number;
+	recallAt5: number;
+	mrr: number;
+	failed: string[];
 }
 
 interface QAPair {
@@ -70,6 +99,16 @@ interface ScoreEntry {
 	recallAt3: number;
 	recallAt5: number;
 	mrr: number;
+	// Production-path retrieval (MiniLM cosine, and + cross-encoder rerank),
+	// present only when vector retrieval ran (RUN_VECTOR and models loaded).
+	vectorRecallAt1?: number;
+	vectorRecallAt3?: number;
+	vectorRecallAt5?: number;
+	vectorMrr?: number;
+	rerankRecallAt1?: number;
+	rerankRecallAt3?: number;
+	rerankRecallAt5?: number;
+	rerankMrr?: number;
 	faithfulness?: number;
 	answerSimilarity?: number;
 	answerRelevance?: number;
@@ -158,6 +197,51 @@ function computeRecallAtK(qa: QAPair, rankedChunks: Chunk[], k: number): 0 | 1 {
 function computeReciprocalRank(qa: QAPair, rankedChunks: Chunk[]): number {
 	const rank = rankedChunks.findIndex((c) => isRelevant(c, qa));
 	return rank === -1 ? 0 : 1 / (rank + 1);
+}
+
+/**
+ * Run a ranking strategy over every question and aggregate recall@1/3/5 + MRR.
+ * The strategy may be async (the vector + rerank path awaits the cross-encoder).
+ */
+async function computeRetrievalMetrics(
+	qaPairs: QAPair[],
+	rank: (qa: QAPair, index: number) => Chunk[] | Promise<Chunk[]>
+): Promise<RetrievalMetrics> {
+	let recallAt1 = 0,
+		recallAt3 = 0,
+		recallAt5 = 0,
+		mrr = 0;
+	const failed: string[] = [];
+
+	for (let i = 0; i < qaPairs.length; i++) {
+		const qa = qaPairs[i];
+		const ranked = await rank(qa, i);
+		recallAt1 += computeRecallAtK(qa, ranked, 1);
+		const got3 = computeRecallAtK(qa, ranked, 3);
+		recallAt3 += got3;
+		recallAt5 += computeRecallAtK(qa, ranked, 5);
+		mrr += computeReciprocalRank(qa, ranked);
+		if (!got3) failed.push(`  [${qa.id}] ${qa.question}`);
+	}
+
+	const n = qaPairs.length;
+	return {
+		recallAt1: recallAt1 / n,
+		recallAt3: recallAt3 / n,
+		recallAt5: recallAt5 / n,
+		mrr: mrr / n,
+		failed
+	};
+}
+
+// ── Vector retrieval (mirrors production) ────────────────────────────────────────
+
+/** Rank chunks by cosine to the query vector — mirrors vector-store similaritySearch. */
+function rankByVector(queryVec: number[], embedded: EmbeddedChunk[]): EmbeddedChunk[] {
+	return embedded
+		.map((chunk) => ({ chunk, score: cosine(queryVec, chunk.vector) }))
+		.sort((a, b) => b.score - a.score)
+		.map(({ chunk }) => chunk);
 }
 
 // ── Generation metrics ─────────────────────────────────────────────────────────
@@ -320,6 +404,22 @@ function printTable(label: string, rows: [string, string][]): void {
 	}
 }
 
+/** Side-by-side recall@k / MRR for each retrieval strategy. */
+function printRetrievalComparison(rows: { label: string; m: RetrievalMetrics }[]): void {
+	const pct = (v: number) => `${Math.round(v * 100)}%`;
+	const labelW = Math.max(...rows.map((r) => r.label.length), 'Strategy'.length) + 2;
+	console.log('\n  RETRIEVAL METRICS  (recall@k — BM25 vs. production vector path)');
+	console.log('  ' + '─'.repeat(labelW + 28));
+	console.log(
+		`  ${'Strategy'.padEnd(labelW)}${'R@1'.padStart(7)}${'R@3'.padStart(7)}${'R@5'.padStart(7)}${'MRR'.padStart(7)}`
+	);
+	for (const { label, m } of rows) {
+		console.log(
+			`  ${label.padEnd(labelW)}${pct(m.recallAt1).padStart(7)}${pct(m.recallAt3).padStart(7)}${pct(m.recallAt5).padStart(7)}${pct(m.mrr).padStart(7)}`
+		);
+	}
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
@@ -343,42 +443,67 @@ async function main(): Promise<void> {
 	console.log('\n=== Nexus Recall — RAG Evaluation ===');
 	console.log(`Corpus: corpus.md | ${chunks.length} chunks | ${qaPairs.length} questions`);
 
-	// ── Retrieval metrics (BM25) ─────────────────────────────────────────────
-
-	let recallAt1 = 0,
-		recallAt3 = 0,
-		recallAt5 = 0,
-		mrrSum = 0;
-	const failedQueries: string[] = [];
-
-	for (const qa of qaPairs) {
-		const ranked = rankByBM25(qa.question, chunks);
-		recallAt1 += computeRecallAtK(qa, ranked, 1);
-		const r3 = computeRecallAtK(qa, ranked, 3);
-		recallAt3 += r3;
-		recallAt5 += computeRecallAtK(qa, ranked, 5);
-		mrrSum += computeReciprocalRank(qa, ranked);
-		if (!r3) failedQueries.push(`  [${qa.id}] ${qa.question}`);
-	}
+	// ── Retrieval metrics ────────────────────────────────────────────────────
+	// BM25 always runs (free, deterministic gate). The vector and vector+rerank
+	// paths mirror what the app ships (MiniLM cosine → cross-encoder rerank); they
+	// run unless EVAL_VECTOR=0 or the models fail to load, in which case we fall
+	// back to the BM25-only gate.
 
 	const n = qaPairs.length;
+	const bm25 = await computeRetrievalMetrics(qaPairs, (qa) => rankByBM25(qa.question, chunks));
 	const metrics = {
-		recallAt1: recallAt1 / n,
-		recallAt3: recallAt3 / n,
-		recallAt5: recallAt5 / n,
-		mrr: mrrSum / n
+		recallAt1: bm25.recallAt1,
+		recallAt3: bm25.recallAt3,
+		recallAt5: bm25.recallAt5,
+		mrr: bm25.mrr
 	};
 
-	printTable('RETRIEVAL METRICS  (BM25 lexical, offline)', [
-		['Recall@1', bar(metrics.recallAt1)],
-		['Recall@3', bar(metrics.recallAt3, THRESHOLD_RECALL_3)],
-		['Recall@5', bar(metrics.recallAt5)],
-		['MRR     ', bar(metrics.mrr)]
-	]);
+	let vector: RetrievalMetrics | undefined;
+	let rerankMetrics: RetrievalMetrics | undefined;
 
-	if (failedQueries.length > 0) {
-		console.log('\n  Questions missing from top-3:');
-		for (const q of failedQueries) console.log(q);
+	if (RUN_VECTOR) {
+		try {
+			const embedder = localMiniLMEmbedder();
+			process.stdout.write(`\n  Embedding corpus + questions (${embedder.label}) …`);
+			const chunkVecs = await embedder.embed(chunks.map((c) => c.text));
+			const embedded: EmbeddedChunk[] = chunks.map((c, i) => ({ ...c, vector: chunkVecs[i] }));
+			const queryVecs = await embedder.embed(qaPairs.map((q) => q.question));
+			console.log(' done.');
+
+			vector = await computeRetrievalMetrics(qaPairs, (_qa, i) =>
+				rankByVector(queryVecs[i], embedded)
+			);
+
+			// Rerank in its own try so a reranker failure still reports vector metrics.
+			try {
+				process.stdout.write('  Reranking (cross-encoder ms-marco-MiniLM) …');
+				rerankMetrics = await computeRetrievalMetrics(qaPairs, (qa, i) =>
+					rerank(qa.question, rankByVector(queryVecs[i], embedded).slice(0, SEARCH_TOP_K)).then(
+						(r) => r.slice(0, RERANK_TOP_K)
+					)
+				);
+				console.log(' done.');
+			} catch (err) {
+				console.log(`\n  Rerank skipped — model load failed (${String(err)}).`);
+			}
+		} catch (err) {
+			console.log(`\n  Vector retrieval skipped — model load failed (${String(err)}).`);
+			console.log('  Falling back to the BM25-only gate.');
+			vector = undefined;
+			rerankMetrics = undefined;
+		}
+	} else {
+		console.log('\n  Vector retrieval skipped (EVAL_VECTOR=0) — BM25-only gate.');
+	}
+
+	const comparison = [{ label: 'BM25 (lexical)', m: bm25 }];
+	if (vector) comparison.push({ label: 'Vector (MiniLM)', m: vector });
+	if (rerankMetrics) comparison.push({ label: 'Vector + rerank', m: rerankMetrics });
+	printRetrievalComparison(comparison);
+
+	if (bm25.failed.length > 0) {
+		console.log('\n  BM25 questions missing from top-3:');
+		for (const q of bm25.failed) console.log(q);
 	}
 
 	// ── Generation metrics (LLM-as-judge) ───────────────────────────────────
@@ -440,6 +565,18 @@ async function main(): Promise<void> {
 		questionCount: n,
 		chunkCount: chunks.length,
 		...metrics,
+		...(vector && {
+			vectorRecallAt1: vector.recallAt1,
+			vectorRecallAt3: vector.recallAt3,
+			vectorRecallAt5: vector.recallAt5,
+			vectorMrr: vector.mrr
+		}),
+		...(rerankMetrics && {
+			rerankRecallAt1: rerankMetrics.recallAt1,
+			rerankRecallAt3: rerankMetrics.recallAt3,
+			rerankRecallAt5: rerankMetrics.recallAt5,
+			rerankMrr: rerankMetrics.mrr
+		}),
 		...(faithfulness != null && {
 			faithfulness,
 			answerSimilarity,
@@ -448,6 +585,7 @@ async function main(): Promise<void> {
 		}),
 		thresholdsMet:
 			metrics.recallAt3 >= THRESHOLD_RECALL_3 &&
+			(rerankMetrics == null || rerankMetrics.recallAt3 >= THRESHOLD_VECTOR_RECALL_3) &&
 			(faithfulness == null || faithfulness >= THRESHOLD_FAITHFULNESS) &&
 			(answerSimilarity == null || answerSimilarity >= THRESHOLD_ANSWER_SIMILARITY) &&
 			(answerRelevance == null || answerRelevance >= THRESHOLD_ANSWER_RELEVANCE)
@@ -461,7 +599,12 @@ async function main(): Promise<void> {
 	const failed: string[] = [];
 	if (metrics.recallAt3 < THRESHOLD_RECALL_3) {
 		failed.push(
-			`recall@3 = ${Math.round(metrics.recallAt3 * 100)}% (threshold: ${Math.round(THRESHOLD_RECALL_3 * 100)}%)`
+			`BM25 recall@3 = ${Math.round(metrics.recallAt3 * 100)}% (threshold: ${Math.round(THRESHOLD_RECALL_3 * 100)}%)`
+		);
+	}
+	if (rerankMetrics != null && rerankMetrics.recallAt3 < THRESHOLD_VECTOR_RECALL_3) {
+		failed.push(
+			`vector+rerank recall@3 = ${Math.round(rerankMetrics.recallAt3 * 100)}% (threshold: ${Math.round(THRESHOLD_VECTOR_RECALL_3 * 100)}%)`
 		);
 	}
 	if (faithfulness != null && faithfulness < THRESHOLD_FAITHFULNESS) {

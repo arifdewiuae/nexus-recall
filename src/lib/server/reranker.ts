@@ -1,4 +1,4 @@
-// Shared cross-encoder reranker — module-level singleton so the pipeline is
+// Shared cross-encoder reranker — module-level singleton so the model is
 // downloaded and loaded exactly once per server process, regardless of which
 // route triggers it first (warmup or chat).
 
@@ -9,41 +9,54 @@ export interface RerankCandidate {
 	[key: string]: unknown;
 }
 
-// Shape of the cross-encoder text-classification pipeline used here:
-// it accepts a batch of {text, text_pair} inputs and returns per-input scores.
-type RerankInput = { text: string; text_pair: string };
-type RerankPipeline = (inputs: RerankInput[]) => Promise<Array<{ score: number; label?: string }>>;
+// A cross-encoder scores a (query, passage) pair with a single logit; higher =
+// more relevant. transformers.js 2.x doesn't expose pair scoring through the
+// high-level `text-classification` pipeline (it expects plain strings), so we
+// drive the tokenizer + sequence-classification model directly with `text_pair`.
+type Tokenizer = (
+	texts: string[],
+	opts: { text_pair: string[]; padding: boolean; truncation: boolean }
+) => Record<string, unknown>;
+type SeqClassModel = (
+	inputs: Record<string, unknown>
+) => Promise<{ logits: { tolist(): number[][] } }>;
 
-let _pipeline: RerankPipeline | null = null;
+let _tokenizer: Tokenizer | null = null;
+let _model: SeqClassModel | null = null;
 let _initPromise: Promise<void> | null = null;
 
-/** Whether the reranker pipeline has finished loading (for /api/health). */
+/** Whether the reranker is loaded (for /api/health). */
 export function isRerankerWarm(): boolean {
-	return _pipeline !== null;
+	return _model !== null;
 }
 
 /**
- * Download and load the cross-encoder pipeline.  Safe to call multiple times —
- * concurrent callers all await the same promise, so the model is never loaded twice.
+ * Download and load the cross-encoder tokenizer + model.  Safe to call multiple
+ * times — concurrent callers all await the same promise, so it loads only once.
  */
 export async function initReranker(): Promise<void> {
-	if (_pipeline) return; // already warm
+	if (_model) return; // already warm
 	if (_initPromise) return _initPromise; // in-flight — join it
 
 	_initPromise = (async () => {
-		const { pipeline, env } = await import('@xenova/transformers');
+		const { AutoTokenizer, AutoModelForSequenceClassification, env } =
+			await import('@xenova/transformers');
 		env.allowLocalModels = false;
 
-		const p = await pipeline('text-classification', RERANKER_MODEL_ID);
-		_pipeline = p as unknown as RerankPipeline;
+		const tokenizer = await AutoTokenizer.from_pretrained(RERANKER_MODEL_ID);
+		const model = await AutoModelForSequenceClassification.from_pretrained(RERANKER_MODEL_ID, {
+			quantized: false
+		});
+		_tokenizer = tokenizer as unknown as Tokenizer;
+		_model = model as unknown as SeqClassModel;
 	})();
 
 	await _initPromise;
 }
 
 /**
- * Re-rank `candidates` by relevance to `query`.  Falls back to original order
- * on any error so a broken reranker never blocks the response.
+ * Re-rank `candidates` by cross-encoder relevance to `query`.  Falls back to the
+ * original order on any error so a broken reranker never blocks the response.
  */
 export async function tryRerank<T extends RerankCandidate>(
 	query: string,
@@ -53,16 +66,19 @@ export async function tryRerank<T extends RerankCandidate>(
 
 	try {
 		await initReranker();
-		if (!_pipeline) return candidates;
+		if (!_tokenizer || !_model) return candidates;
 
-		const inputs: RerankInput[] = candidates.map((c) => ({
-			text: query,
-			text_pair: String(c.text ?? '')
-		}));
-		const results = await _pipeline(inputs);
+		const passages = candidates.map((c) => String(c.text ?? ''));
+		const inputs = _tokenizer(Array(passages.length).fill(query), {
+			text_pair: passages,
+			padding: true,
+			truncation: true
+		});
+		const { logits } = await _model(inputs);
+		const scores = logits.tolist().map((row) => row[0]);
 
 		return candidates
-			.map((c, i) => ({ c, score: results[i]?.score ?? 0 }))
+			.map((c, i) => ({ c, score: scores[i] ?? -Infinity }))
 			.sort((a, b) => b.score - a.score)
 			.map(({ c }) => c);
 	} catch {
