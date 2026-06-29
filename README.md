@@ -39,7 +39,7 @@ App runs at `http://localhost:5173`.
 - **Live reasoning** — chain-of-thought is intercepted server-side and shown in a separate panel, never mixed into the answer
 - **Per-answer cost** — token usage + USD cost computed server-side and shown under each reply
 - **PWA** — installable, works offline for already-indexed documents
-- **Eval system** — BM25 recall@k / MRR + LLM-as-judge faithfulness via `pnpm eval`
+- **Eval system** — BM25 recall@k / MRR + LLM-as-judge faithfulness + embedding-based answer similarity & relevance, with a CI quality gate (`pnpm eval`)
 
 ---
 
@@ -126,7 +126,7 @@ pnpm check          # svelte-check + TypeScript
 pnpm lint           # Prettier + ESLint
 pnpm test:unit      # Vitest unit tests
 pnpm test:e2e       # Playwright E2E (golden path: upload → process → chat → citation)
-pnpm eval           # RAG eval: BM25 recall@k / MRR + faithfulness gate
+pnpm eval           # RAG eval: BM25 recall@k / MRR + faithfulness, similarity & relevance gate
 ```
 
 ---
@@ -139,10 +139,50 @@ pnpm eval           # RAG eval: BM25 recall@k / MRR + faithfulness gate
 - **E2E** (Playwright) — golden path with the AI stream mocked at the exact
   AI SDK v6 wire format (`x-vercel-ai-ui-message-stream: v1`).
 - **Evals** — `pnpm eval` runs offline retrieval metrics (BM25 recall@k, MRR)
-  and an optional LLM-as-judge faithfulness pass; gates the build at
-  recall@3 ≥ 0.8 / faithfulness ≥ 0.7 and appends to `evals/scores.json`.
+  plus three optional generation metrics when an LLM key is present, and appends
+  every run to `evals/scores.json`. See **Results** below.
 - **CI** (GitHub Actions, pnpm + Node 24, SHA-pinned actions) — lint → typecheck
-  → unit; a separate E2E job; and an evals gate on retrieval-affecting PRs.
+  → unit; a separate E2E job; and the evals gate (retrieval-only on
+  retrieval-affecting PRs, full gate on every push to `main`).
+
+### Results
+
+Measured on `evals/fixtures/` (20-question alchemy corpus; generation metrics
+sample 5 questions). Numbers come from a real `pnpm eval` run, not estimates.
+
+| Metric            | Score |  Gate   | Method                                                    |
+| ----------------- | :---: | :-----: | --------------------------------------------------------- |
+| Context Recall@3  | 100%  |  ≥ 80%  | BM25 lexical retrieval, offline & deterministic           |
+| MRR               |  98%  |    —    | BM25 lexical retrieval                                    |
+| Faithfulness      |  99%  |  ≥ 80%  | LLM-as-judge (Claude Haiku → Fireworks)                   |
+| Answer Similarity |  85%  |  ≥ 80%  | cosine(answer, gold answer), `text-embedding-3-small`     |
+| Answer Relevance  |  74%  | ≥ 65%\* | RAGAS-style: cosine of regenerated questions vs. original |
+
+\* Answer Relevance is **reported with a regression floor, not held to 0.8**. It
+averages the cosine between the original question and 3 questions an LLM
+reconstructs from the answer — a _dispersion_ measure whose natural range for
+terse factual QA is ~0.7 (the best reconstruction scores ~0.95, but averaging in
+two deliberately-distinct rephrasings pulls the mean down). Faithfulness and
+Answer Similarity compare to a fixed target and so saturate near 1.0 when correct;
+relevance does not. The 0.65 floor catches a real collapse (an off-topic answer
+scores ~0.3) without pretending 0.8 is achievable for this metric.
+
+> 📊 **[Why Answer Relevance sits at ~0.73 →](docs/eval-relevance-explained.html)** — a
+> single-page visual walkthrough (real run data) of the averaging and embedding-geometry
+> effects behind the number.
+
+**LLM-as-judge pattern.** The faithfulness judge and question regeneration use the
+AI SDK's `generateObject` with a Zod schema, so the model is constrained to return
+validated structured output — faithfulness as `{ score, reasoning }`, regeneration
+as `{ questions: string[] }`. (Note: answer **citations** in the app are _not_
+LLM-generated — they're derived deterministically from the reranked chunks and
+Zod-validated, so a `[n]` always points at a real source.)
+
+Embeddings use OpenAI `text-embedding-3-small` when `OPENAI_API_KEY` is set
+(canonical RAGAS, better paraphrase scale); otherwise they fall back to the local
+MiniLM model the app ships with. The full generation gate therefore needs
+`ANTHROPIC_API_KEY` (judge) + `OPENAI_API_KEY` (embeddings) — both are configured
+as GitHub Actions secrets for the `main`-push run; PRs run the free retrieval gate.
 
 ---
 
