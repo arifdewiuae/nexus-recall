@@ -2,10 +2,12 @@ import { describe, it, expect, vi } from 'vitest';
 
 import { assembleContext, buildCitations } from './chat.context';
 import { ChatRequestSchema } from './chat.schema';
-import { interceptReasoning } from './chat.stream';
+import { interceptReasoning, streamAbortSignal } from './chat.stream';
 import { resolveProvider } from './chat.keys';
 import { estimateCostUsd, formatCostUsd } from './chat.pricing';
 import { createLogger } from './chat.logger';
+import { SYSTEM_PROMPT } from './chat.prompt';
+import { LLM_STREAM_TIMEOUT_MS } from '$lib/server/config';
 import type { ChunkRecord, Citation } from './chat.schema';
 
 // ── Mock reranker so tests never try to download the cross-encoder model ───────
@@ -419,5 +421,61 @@ describe('interceptReasoning', () => {
 			(c) => (c['messageMetadata'] as Record<string, unknown>)?.['truncated'] === true
 		);
 		expect(truncated).toBe(true);
+	});
+});
+
+describe('SYSTEM_PROMPT (security guardrails)', () => {
+	// A regression lock on the security-critical clauses, so the Oracle persona
+	// can be tuned without silently dropping injection resistance, grounding,
+	// citation discipline, or the no-fabrication rule.
+	it('treats source content as untrusted data (injection resistance)', () => {
+		expect(SYSTEM_PROMPT).toContain('untrusted DATA');
+		expect(SYSTEM_PROMPT).toContain('ignore previous instructions');
+	});
+
+	it('grounds answers in the provided sources only', () => {
+		expect(SYSTEM_PROMPT).toContain('ONLY the provided sources');
+	});
+
+	it('enforces citation discipline', () => {
+		expect(SYSTEM_PROMPT).toContain('ONLY cite [n] when that exact source');
+	});
+
+	it('forbids fabrication when the sources hold no answer', () => {
+		expect(SYSTEM_PROMPT.toLowerCase()).toContain('never fabricate');
+	});
+});
+
+describe('streamAbortSignal', () => {
+	it('stays open while the client is connected and within budget', () => {
+		const client = new AbortController();
+		expect(streamAbortSignal(client.signal, 10_000).aborted).toBe(false);
+	});
+
+	it('aborts immediately when the client signal is already aborted', () => {
+		expect(streamAbortSignal(AbortSignal.abort()).aborted).toBe(true);
+	});
+
+	it('aborts when the client disconnects before the timeout', () => {
+		const client = new AbortController();
+		const sig = streamAbortSignal(client.signal, 10_000);
+		client.abort();
+		expect(sig.aborted).toBe(true);
+	});
+
+	it('aborts with a TimeoutError once the budget elapses', async () => {
+		const client = new AbortController();
+		const sig = streamAbortSignal(client.signal, 10);
+		expect(sig.aborted).toBe(false);
+		await new Promise((resolve) => setTimeout(resolve, 30));
+		expect(sig.aborted).toBe(true);
+		expect((sig.reason as Error | undefined)?.name).toBe('TimeoutError');
+	});
+
+	it('defaults to the configured, positive timeout budget', () => {
+		// The production call site relies on the default param being the config
+		// value — guard against it silently becoming 0/undefined.
+		expect(LLM_STREAM_TIMEOUT_MS).toBeGreaterThan(0);
+		expect(streamAbortSignal(new AbortController().signal).aborted).toBe(false);
 	});
 });

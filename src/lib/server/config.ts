@@ -23,6 +23,17 @@ export const FIREWORKS_BASE_URL = 'https://api.fireworks.ai/inference/v1';
 export const MAX_OUTPUT_TOKENS = 1024;
 
 /**
+ * Server-side wall-clock budget for a single generation. Guards against a
+ * provider that accepts the request but then stalls (no first token, or a
+ * mid-stream hang): without it, the function would tie up an invocation until
+ * Vercel's platform timeout while the user watches a dead spinner. Generous
+ * relative to a capped {@link MAX_OUTPUT_TOKENS} response (which streams in a few
+ * seconds), so it only ever fires on a genuine hang. On expiry the stream is
+ * aborted and the in-character failure message is surfaced.
+ */
+export const LLM_STREAM_TIMEOUT_MS = 60_000;
+
+/**
  * Sampling temperature for answer generation. Set deliberately rather than left
  * to the provider default (which differs across providers): this is a grounded
  * RAG task where faithfulness matters, so we keep it on the low side — the Oracle

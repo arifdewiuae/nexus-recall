@@ -104,7 +104,16 @@ server-side (never logged). Cloud-embedding keys are used client-side — see
 
 - **Prompt injection** — retrieved document text is wrapped in `<source n="…">`
   tags and the system prompt treats it as untrusted data; instructions found
-  inside a scroll are ignored.
+  inside a scroll are ignored. The security-critical system-prompt clauses
+  (untrusted-data, grounding, citation discipline, no-fabrication) are
+  regression-locked by a unit test, so the persona can be tuned without silently
+  dropping a guardrail.
+- **Stall timeout & graceful degradation** — the generation is bounded by
+  `streamAbortSignal` (`AbortSignal.any` of the client signal +
+  `AbortSignal.timeout(LLM_STREAM_TIMEOUT_MS)`), so a provider that accepts the
+  request but never streams can't hang the function until the platform timeout.
+  On expiry the stream aborts and the in-character "Oracle has gone silent"
+  message is surfaced; the failure is logged with a `timeout` error category.
 - **Key handling** — user keys via headers → demo env fallback → 401; keys never
   appear in logs.
 - **Input boundary** — Zod validates length and provider; null bytes / control
