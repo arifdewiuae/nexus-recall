@@ -3,6 +3,16 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<!--
+			Static page served from /static (outside SvelteKit's kit.csp), so CSP is
+			set inline. Unlike how-it-works.html this page has a small self-contained
+			toggle (inline <script> + onclick), so script-src allows 'unsafe-inline' —
+			acceptable here: no user input, no secrets, no network, zero attack surface.
+		-->
+		<meta
+			http-equiv="Content-Security-Policy"
+			content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+		/>
 		<title>Why Answer Relevance ≈ 0.73 — Nexus Recall evals</title>
 		<style>
 			:root {
