@@ -14,7 +14,7 @@ import { ChatRequestSchema, type ChunkRecord } from './chat.schema';
 import { resolveKeys, resolveProvider, MESSAGES, type ResolvedKeys } from './chat.keys';
 import { getModel } from './chat.models';
 import { assembleContext, buildCitations } from './chat.context';
-import { createLogger } from './chat.logger';
+import { createLogger, categorizeError } from './chat.logger';
 import { interceptReasoning } from './chat.stream';
 
 // ── System prompt ──────────────────────────────────────────────────────────────
@@ -113,7 +113,23 @@ export const POST: RequestHandler = async ({ request }) => {
 					maxOutputTokens: MAX_OUTPUT_TOKENS,
 					temperature: TEMPERATURE,
 					abortSignal: request.signal,
-					onError: ({ error }) => log.error('streamText error', { error: String(error) })
+					// OTel span for the generation (token usage, latency, model, finish
+					// reason) via the provider registered in hooks.server.ts. Inputs and
+					// outputs are deliberately NOT recorded: this is an own-key,
+					// local-first demo, so users' questions and the retrieved scroll text
+					// stay out of traces — the operational signal lives in attributes.
+					experimental_telemetry: {
+						isEnabled: true,
+						functionId: 'rag-chat',
+						recordInputs: false,
+						recordOutputs: false,
+						metadata: { provider, requestId: log.requestId }
+					},
+					onError: ({ error }) =>
+						log.error('streamText error', {
+							error: String(error),
+							errorCategory: categorizeError(error)
+						})
 				})
 			}),
 		onError: () => MESSAGES.streamFailure

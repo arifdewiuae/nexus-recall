@@ -124,6 +124,30 @@ strict-origin-when-cross-origin`, a deny-by-default `Permissions-Policy`, and
 
 ---
 
+## Observability
+
+- **Structured logs** — every request gets a `requestId`-scoped JSON-line logger
+  (`createLogger`). The `rag.retrieve` line carries the rerank delta
+  (`reordered`, `topMovedFrom`) and `retrieveMs`; `llm.finish` carries
+  `latencyMs`.
+- **OpenTelemetry** — `@vercel/otel` is registered in `src/hooks.server.ts`, and
+  the `streamText` call sets `experimental_telemetry` (`functionId: 'rag-chat'`),
+  so each generation emits an OTel span with token usage, latency, model, and
+  finish reason. On Vercel these are collected by the platform; off-platform
+  there's no exporter, so it's a no-op. `recordInputs`/`recordOutputs` are
+  **off** by default — an own-key, local-first demo shouldn't ship users'
+  questions or retrieved scroll text into traces; the operational signal lives in
+  span attributes, not prompt content.
+- **Error categories** — `categorizeError` maps failures to a low-cardinality
+  facet (`auth`, `rate_limit`, `timeout`, `aborted`, `provider`, `validation`,
+  `unknown`) via name/status/message lookup tables, attached to error logs for
+  grouping.
+- **Percentiles** — latency is emitted per request (span duration + `latencyMs`);
+  P95/P99 are derived in Vercel's observability rather than computed in-process,
+  which would be meaningless per serverless instance.
+
+---
+
 ## Scripts
 
 ```sh
