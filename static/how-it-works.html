@@ -3,6 +3,16 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!--
+      Static page served straight from /static, so SvelteKit's kit.csp can't
+      reach it — set CSP inline. No scripts here at all; the page is pure markup
+      with one inline <style> block and inline style="" attributes (hence
+      style-src 'unsafe-inline'). Google Fonts are the only cross-origin loads.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+    />
     <title>Nexus Recall — How It Works Under the Hood</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
