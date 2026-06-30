@@ -1,8 +1,24 @@
 import type { Logger } from './chat.logger';
 import type { Citation } from './chat.schema';
-import type { Provider } from '$lib/server/config';
+import { LLM_STREAM_TIMEOUT_MS, type Provider } from '$lib/server/config';
 import { estimateCostUsd, type TokenUsage } from './chat.pricing';
 import { MESSAGES } from './chat.keys';
+
+// ── Generation lifetime ─────────────────────────────────────────────────────
+
+/**
+ * Abort signal that bounds a generation: it fires when the client goes away
+ * (`clientSignal`) OR our wall-clock budget elapses. The timeout guards against
+ * a provider that accepts the request but never streams — without it the
+ * function would hang until the platform timeout. On expiry the stream's
+ * onError path surfaces the safe in-character failure message. `timeoutMs`
+ * defaults to {@link LLM_STREAM_TIMEOUT_MS}; it's a parameter so tests can use a
+ * short budget.
+ */
+export const streamAbortSignal = (
+	clientSignal: AbortSignal,
+	timeoutMs: number = LLM_STREAM_TIMEOUT_MS
+): AbortSignal => AbortSignal.any([clientSignal, AbortSignal.timeout(timeoutMs)]);
 
 // ── Discriminated chunk types ──────────────────────────────────────────────────
 // The AI SDK emits a wide union from toUIMessageStream(); we narrow the cases
