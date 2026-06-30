@@ -116,7 +116,11 @@ server-side (never logged). Cloud-embedding keys are used client-side — see
 - **Security headers** — `vercel.json` sets `X-Frame-Options: DENY` (anti-
   clickjacking), `X-Content-Type-Options: nosniff`, `Referrer-Policy:
 strict-origin-when-cross-origin`, a deny-by-default `Permissions-Policy`, and
-  HSTS — alongside the COOP/COEP the WASM worker needs.
+  HSTS — alongside the COOP/COEP the WASM worker needs. A
+  `Content-Security-Policy` is owned by SvelteKit's `kit.csp` (so it can
+  hash/nonce the inline hydration script — `script-src` stays `'self'
+  'wasm-unsafe-eval'`, no script `'unsafe-inline'`); `connect-src` allows the
+  HuggingFace CDN the in-browser embedder downloads MiniLM from.
 
 ---
 
@@ -224,18 +228,20 @@ as GitHub Actions secrets for the `main`-push run; PRs run the free retrieval ga
 
 ## Deployment
 
-Deploys to Vercel via `@sveltejs/adapter-vercel`. Security headers live in
-`vercel.json`: COOP/COEP (required for the Transformers.js / pdfjs WASM
+Deploys to Vercel via `@sveltejs/adapter-vercel`. Static security headers live
+in `vercel.json`: COOP/COEP (required for the Transformers.js / pdfjs WASM
 `SharedArrayBuffer`) plus the standard hardening set (X-Frame-Options,
-X-Content-Type-Options, Referrer-Policy, Permissions-Policy, HSTS).
-Set `DEMO_KEYS_ENABLED=false` in production. Speed Insights + Analytics are wired
-in the root layout (no-op off-platform).
+X-Content-Type-Options, Referrer-Policy, Permissions-Policy, HSTS). The
+`Content-Security-Policy` is owned by SvelteKit's `kit.csp` instead, so it can
+hash/nonce the inline hydration script (`script-src 'self' 'wasm-unsafe-eval'`,
+no script `'unsafe-inline'`); `connect-src` permits the HuggingFace CDN the
+browser embedder pulls MiniLM from. The standalone `static/how-it-works.html`
+carries its own `<meta>` CSP. Set `DEMO_KEYS_ENABLED=false` in production. Speed
+Insights + Analytics are wired in the root layout (no-op off-platform).
 
-**Next steps (documented, not shipped):** a strict `Content-Security-Policy`
-(held back deliberately — it has to allow `wasm-unsafe-eval` and the
-cross-origin-isolated worker without breaking the in-browser ML, so it needs its
-own testing pass); session rate limiting + content moderation (own-key
-local-first demo doesn't strictly need them); a server proxy for cloud embeddings.
+**Next steps (documented, not shipped):** session rate limiting + content
+moderation (own-key local-first demo doesn't strictly need them); a server proxy
+for cloud embeddings.
 
 ---
 
