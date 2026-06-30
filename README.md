@@ -175,8 +175,13 @@ pnpm eval           # RAG eval: BM25 recall@k / MRR + faithfulness, similarity &
   metrics when an LLM key is present, and appends every run to
   `evals/scores.json`. See **Results** below.
 - **CI** (GitHub Actions, pnpm + Node 24, SHA-pinned actions) — lint → typecheck
-  → unit; a separate E2E job; and the evals gate (retrieval-only on
-  retrieval-affecting PRs, full gate on every push to `main`).
+  → unit; a separate E2E job; and the evals gate — BM25-only on
+  retrieval-affecting PRs, and the full retrieval path (BM25 + vector +
+  cross-encoder rerank) on every push to `main`, all key-free. The LLM-judge
+  generation metrics (faithfulness, answer similarity & relevance) gate in CI
+  only when the optional `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` secrets are set;
+  by default they're unset, so those run as a local `pnpm eval` step (a few
+  cents/run) rather than a per-merge CI gate.
 
 ### Results
 

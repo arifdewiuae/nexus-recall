@@ -4,8 +4,12 @@ name: Evals
 #   · PRs touching retrieval-affecting code or the ground-truth fixtures — a
 #     chunking / context / embedding change "looks like a refactor" but can
 #     silently move retrieval quality, so gate it (free, deterministic BM25).
-#   · Every push to main — runs the FULL gate including the LLM-as-judge
-#     faithfulness + answer-relevance metrics, using the API-key secret below.
+#   · Every push to main — runs the retrieval gate against the production
+#     vector + cross-encoder path (key-free local models). The LLM-as-judge
+#     faithfulness / answer-relevance metrics ALSO gate here, but only when the
+#     optional API-key secrets below are configured. They are unset by default,
+#     so in CI those metrics are skipped and stay a local `pnpm eval` step (see
+#     README) — add the secrets to turn the LLM gate on in CI.
 on:
   push:
     branches: [main]
@@ -38,14 +42,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # On main push: the full gate. EVAL_VECTOR is on → the production retrieval
-      # path runs (MiniLM cosine + cross-encoder rerank, downloaded from the HF
-      # CDN, no key needed) alongside BM25; the secrets enable the LLM-judge
-      # faithfulness + embedding-based answer similarity & relevance. Fails if
-      # BM25 recall@3 < 0.8, vector+rerank recall@3 < 0.8, faithfulness < 0.8,
-      # answer similarity < 0.8, or answer relevance < 0.65. ANTHROPIC_API_KEY
-      # drives the judge + question regeneration; OPENAI_API_KEY drives the
-      # embeddings (text-embedding-3-small) the similarity/relevance metrics use.
+      # On main push: EVAL_VECTOR=1 runs the production retrieval path (MiniLM
+      # cosine + cross-encoder rerank, downloaded from the HF CDN, no key needed)
+      # alongside BM25, and gates on BM25 recall@3 < 0.8 and vector+rerank
+      # recall@3 < 0.8 — all key-free.
+      #
+      # The LLM-judge metrics (faithfulness < 0.8, answer similarity < 0.8,
+      # answer relevance < 0.65) also gate, but only when the optional secrets
+      # below are set: ANTHROPIC_API_KEY drives the judge + question
+      # regeneration, OPENAI_API_KEY the embeddings (text-embedding-3-small).
+      # By default they are unset, so the eval prints "Generation metrics
+      # skipped" and those metrics are exercised locally via `pnpm eval` with
+      # keys (a few cents/run) instead of as a per-merge CI gate.
       #
       # On PRs (and forks): EVAL_VECTOR=0 and the secrets are absent → free,
       # deterministic BM25 retrieval gate only (no model downloads, no LLM calls).
