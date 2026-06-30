@@ -8,125 +8,314 @@
 			set inline. Unlike how-it-works.html this page has a small self-contained
 			toggle (inline <script> + onclick), so script-src allows 'unsafe-inline' —
 			acceptable here: no user input, no secrets, no network, zero attack surface.
+			Google Fonts are the only cross-origin loads (shared with how-it-works).
 		-->
 		<meta
 			http-equiv="Content-Security-Policy"
-			content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+			content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
 		/>
-		<title>Why Answer Relevance ≈ 0.73 — Nexus Recall evals</title>
+		<title>Nexus Recall — Why Answer Relevance ≈ 0.73</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;500;700&display=swap"
+			rel="stylesheet"
+		/>
 		<style>
 			:root {
-				--bg: #14080c;
-				--panel: #1f1014;
-				--ink: #f3e9dd;
-				--muted: #b9a48f;
-				--line: #3a2329;
-				--gold: #d4af6a;
-				--green: #7bbf6a;
+				/* App palette — mirrors how-it-works.html / src/routes/layout.css */
+				--bg-deep: #14080c;
+				--bg-panel: #20101a;
+				--bg-elev: #2c1822;
+				--bg-elev-2: #3c2030;
+				--border-outer: #000000;
+				--border-light: #5e2438;
+				--border-dark: #080306;
+				--border-mid: #180a10;
+				--accent: #e0b040;
+				--accent-dim: #8e6020;
+				--crimson: #c84050;
+				--arcane: #9460e0;
+				--ok: #6fcf7f;
+				--err: #ff3d5a;
+				--text: #f0d8b8;
+				--text-dim: #7a5a48;
+				--text-faint: #4a3a30;
+				--glow: rgba(224, 176, 64, 0.35);
+				--pixel: 'Press Start 2P', monospace;
+				--mono: 'JetBrains Mono', ui-monospace, monospace;
+
+				/* Semantic aliases used by the inline viz markup + script */
+				--bg: var(--bg-deep);
+				--panel: var(--bg-panel);
+				--line: var(--border-light);
+				--ink: var(--text);
+				--muted: var(--text-dim);
+				--gold: var(--accent);
+				--green: var(--ok);
 				--amber: #e0a44b;
-				--red: #d36a6a;
-				--blue: #6a9cd3;
+				--red: var(--crimson);
+				--blue: var(--arcane);
 			}
 			* {
 				box-sizing: border-box;
 			}
+			html {
+				scroll-behavior: smooth;
+			}
 			body {
 				margin: 0;
-				background: var(--bg);
-				color: var(--ink);
-				font:
-					16px/1.6 ui-sans-serif,
-					system-ui,
-					-apple-system,
-					Segoe UI,
-					Roboto,
-					sans-serif;
-				padding: 0 0 5rem;
+				background:
+					radial-gradient(1100px 520px at 82% -10%, rgba(224, 176, 64, 0.1), transparent 60%),
+					radial-gradient(820px 460px at -10% 8%, rgba(148, 96, 224, 0.08), transparent 55%),
+					var(--bg-deep);
+				color: var(--text);
+				font-family: var(--mono);
+				font-size: 14px;
+				line-height: 1.7;
+				-webkit-font-smoothing: antialiased;
+			}
+			/* CRT scanlines — matches the app */
+			body::after {
+				content: '';
+				position: fixed;
+				inset: 0;
+				pointer-events: none;
+				z-index: 9999;
+				background: repeating-linear-gradient(
+					to bottom,
+					transparent 0,
+					transparent 2px,
+					rgba(0, 0, 0, 0.12) 3px,
+					rgba(0, 0, 0, 0.12) 4px
+				);
 			}
 			.wrap {
-				max-width: 860px;
+				max-width: 1040px;
 				margin: 0 auto;
-				padding: 0 1.25rem;
+				padding: 0 22px 120px;
 			}
-			header {
-				padding: 3rem 0 1.5rem;
-				border-bottom: 1px solid var(--line);
-				margin-bottom: 2.5rem;
+			a {
+				color: var(--accent);
 			}
-			h1 {
-				font-size: 1.9rem;
-				margin: 0 0 0.5rem;
-				color: var(--gold);
-				letter-spacing: 0.2px;
+
+			/* ── Hero ── */
+			header.hero {
+				padding: 80px 22px 48px;
+				text-align: center;
+				border-bottom: 2px solid var(--border-outer);
+				background: linear-gradient(180deg, rgba(44, 24, 34, 0.5), transparent);
+			}
+			.badge {
+				display: inline-flex;
+				align-items: center;
+				gap: 8px;
+				font-family: var(--pixel);
+				font-size: 8px;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: var(--accent);
+				box-shadow: inset 0 0 0 2px var(--border-light);
+				padding: 8px 14px;
+				background: var(--bg-panel);
+			}
+			.badge .dot {
+				width: 7px;
+				height: 7px;
+				background: var(--accent);
+				box-shadow: 0 0 8px var(--accent);
+				animation: blink 1.4s steps(2) infinite;
+			}
+			@keyframes blink {
+				0%,
+				49% {
+					opacity: 1;
+				}
+				50%,
+				100% {
+					opacity: 0.3;
+				}
+			}
+			header.hero h1 {
+				font-family: var(--pixel);
+				font-size: clamp(18px, 4vw, 32px);
+				margin: 26px 0 16px;
+				line-height: 1.4;
+				color: var(--accent);
+				text-shadow: 0 0 18px var(--glow);
+			}
+			header.hero p.sub {
+				color: var(--text-dim);
+				font-size: 15px;
+				max-width: 680px;
+				margin: 0 auto;
+			}
+			header.hero p.sub code {
+				color: var(--accent);
+			}
+			.hero-stats {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 12px;
+				justify-content: center;
+				margin-top: 34px;
+			}
+			.hero-stat {
+				background: var(--bg-panel);
+				box-shadow: inset 0 0 0 2px var(--border-light);
+				padding: 12px 18px;
+				min-width: 120px;
+			}
+			.hero-stat .n {
+				font-family: var(--pixel);
+				font-size: 11px;
+				color: var(--text);
+			}
+			.hero-stat .l {
+				font-size: 11px;
+				color: var(--text-faint);
+				text-transform: uppercase;
+				letter-spacing: 0.06em;
+				margin-top: 6px;
+			}
+			nav.toc {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 8px;
+				justify-content: center;
+				margin-top: 30px;
+			}
+			nav.toc a {
+				font-family: var(--pixel);
+				font-size: 8px;
+				color: var(--text-dim);
+				text-decoration: none;
+				box-shadow: inset 0 0 0 2px var(--border-light);
+				padding: 8px 11px;
+				background: var(--bg-panel);
+				transition: 0.15s;
+			}
+			nav.toc a:hover {
+				color: var(--accent);
+				box-shadow: inset 0 0 0 2px var(--accent);
+			}
+			nav.toc a.home {
+				color: var(--accent-dim);
+			}
+
+			/* ── Section ── */
+			section {
+				margin-top: 66px;
+			}
+			.eyebrow {
+				font-family: var(--pixel);
+				font-size: 8px;
+				letter-spacing: 0.14em;
+				text-transform: uppercase;
+				color: var(--accent-dim);
+				margin-bottom: 12px;
 			}
 			h2 {
-				font-size: 1.3rem;
-				margin: 3rem 0 0.4rem;
-				color: var(--gold);
+				font-family: var(--pixel);
+				font-size: clamp(14px, 2.4vw, 20px);
+				margin: 0 0 16px;
+				line-height: 1.5;
+				color: var(--accent);
 			}
 			h3 {
-				font-size: 1rem;
-				margin: 1.6rem 0 0.4rem;
-				color: var(--ink);
+				font-family: var(--pixel);
+				font-size: 10px;
+				line-height: 1.6;
+				margin: 0 0 10px;
+				color: var(--text);
 			}
 			p {
-				color: var(--ink);
+				color: var(--text-dim);
+				max-width: 800px;
 			}
-			.lede {
-				color: var(--muted);
-				font-size: 1.05rem;
+			p.lead {
+				color: var(--text-dim);
+				font-size: 14px;
+				max-width: 800px;
 			}
-			.muted {
-				color: var(--muted);
+			p strong,
+			p em {
+				color: var(--text);
+			}
+			p em {
+				font-style: italic;
+			}
+			ol {
+				color: var(--text-dim);
+				max-width: 800px;
+				padding-left: 22px;
+			}
+			ol li {
+				margin: 6px 0;
+			}
+			ol li strong {
+				color: var(--text);
 			}
 			code {
-				background: #0d0507;
-				padding: 0.1em 0.4em;
-				border-radius: 4px;
-				font-size: 0.9em;
-				color: var(--gold);
+				font-family: var(--mono);
+				font-size: 0.92em;
+				background: var(--bg-deep);
+				box-shadow: inset 0 0 0 1px var(--border-mid);
+				border-radius: 3px;
+				padding: 1px 6px;
+				color: var(--accent);
 			}
+
+			/* ── Metric cards ── */
 			.cards {
 				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-				gap: 1rem;
-				margin: 1.5rem 0;
+				grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+				gap: 14px;
+				margin: 22px 0;
 			}
 			.card {
-				background: var(--panel);
-				border: 1px solid var(--line);
-				border-radius: 12px;
-				padding: 1.1rem 1.2rem;
-			}
-			.card .score {
-				font-size: 2rem;
-				font-weight: 700;
+				background: var(--bg-panel);
+				box-shadow: inset 0 0 0 2px var(--border-light);
+				padding: 18px 20px;
 			}
 			.card .name {
-				font-weight: 600;
-				margin-bottom: 0.2rem;
+				font-family: var(--pixel);
+				font-size: 9px;
+				line-height: 1.6;
+				color: var(--text);
+				margin-bottom: 12px;
+			}
+			.card .score {
+				font-family: var(--pixel);
+				font-size: 20px;
 			}
 			.card .gate {
-				font-size: 0.82rem;
-				margin-top: 0.5rem;
-				color: var(--muted);
+				font-size: 12px;
+				margin-top: 12px;
+				color: var(--text-faint);
+				text-transform: uppercase;
+				letter-spacing: 0.05em;
 			}
-			.pass {
-				color: var(--green);
+			.card .gate.pass {
+				color: var(--ok);
 			}
-			.report {
+			.card .gate.report {
 				color: var(--amber);
 			}
+
+			/* ── Per-question / paraphrase viz ── */
 			.qblock {
-				background: var(--panel);
-				border: 1px solid var(--line);
-				border-radius: 12px;
-				padding: 1rem 1.2rem;
-				margin: 1rem 0;
+				background: var(--bg-panel);
+				box-shadow: inset 0 0 0 2px var(--border-light);
+				padding: 16px 18px;
+				margin: 14px 0;
 			}
 			.qtitle {
-				font-weight: 600;
-				margin-bottom: 0.8rem;
+				font-family: var(--pixel);
+				font-size: 9px;
+				line-height: 1.7;
+				color: var(--text);
+				margin-bottom: 14px;
 			}
 			.qtitle .qmean {
 				float: right;
@@ -140,207 +329,292 @@
 				margin: 0.35rem 0;
 			}
 			.qtext {
-				font-size: 0.88rem;
-				color: var(--muted);
+				font-size: 13px;
+				color: var(--text-dim);
 				margin-bottom: 0.2rem;
 			}
 			.track {
 				position: relative;
-				background: #0d0507;
-				border-radius: 5px;
+				background: var(--bg-deep);
+				box-shadow: inset 0 0 0 1px var(--border-mid);
 				height: 16px;
 				overflow: hidden;
 			}
 			.fill {
 				height: 100%;
-				border-radius: 5px;
 			}
 			.val {
+				font-family: var(--mono);
 				font-variant-numeric: tabular-nums;
 				font-size: 0.85rem;
 				text-align: right;
-				color: var(--ink);
+				color: var(--text);
 			}
 			.bigbar {
-				margin: 0.5rem 0 0.2rem;
+				margin: 14px 0 0.2rem;
 			}
 			.legend {
-				font-size: 0.82rem;
-				color: var(--muted);
-				margin-top: 0.4rem;
+				font-size: 12px;
+				color: var(--text-dim);
+				margin-top: 12px;
 			}
-			.dot {
+			.dot-l {
 				display: inline-block;
 				width: 0.7em;
 				height: 0.7em;
-				border-radius: 50%;
 				margin-right: 0.3em;
 				vertical-align: middle;
 			}
+
+			/* ── Callout ── */
 			.callout {
-				background: #0d0507;
-				border-left: 3px solid var(--gold);
-				border-radius: 0 8px 8px 0;
-				padding: 0.9rem 1.1rem;
-				margin: 1.5rem 0;
+				border-left: 4px solid var(--accent);
+				background: rgba(224, 176, 64, 0.06);
+				padding: 14px 18px;
+				color: var(--text-dim);
+				font-size: 13.5px;
+				margin: 18px 0;
 			}
+			.callout strong {
+				color: var(--text);
+			}
+
+			/* ── Ship list ── */
+			ul.clean {
+				list-style: none;
+				padding: 0;
+				margin: 12px 0 0;
+				max-width: 800px;
+			}
+			ul.clean li {
+				padding: 9px 0 9px 24px;
+				position: relative;
+				color: var(--text-dim);
+				border-bottom: 1px solid var(--border-mid);
+				font-size: 13.5px;
+			}
+			ul.clean li::before {
+				content: '▹';
+				position: absolute;
+				left: 2px;
+				color: var(--accent);
+			}
+			ul.clean li:last-child {
+				border-bottom: none;
+			}
+
+			/* ── Toggle ── */
 			.toggle {
 				display: inline-flex;
+				flex-wrap: wrap;
 				gap: 0.5rem;
 				align-items: center;
-				margin: 1rem 0;
+				margin: 18px 0;
 			}
 			button {
-				background: var(--panel);
-				color: var(--ink);
-				border: 1px solid var(--line);
-				border-radius: 8px;
-				padding: 0.5rem 0.9rem;
+				font-family: var(--pixel);
+				font-size: 8px;
+				letter-spacing: 0.06em;
+				text-transform: uppercase;
+				background: var(--bg-panel);
+				color: var(--text-dim);
+				box-shadow: inset 0 0 0 2px var(--border-light);
+				border: 0;
+				padding: 10px 12px;
 				cursor: pointer;
-				font: inherit;
+				transition: 0.15s;
+			}
+			button:hover {
+				color: var(--accent);
 			}
 			button.active {
-				border-color: var(--gold);
-				color: var(--gold);
+				box-shadow: inset 0 0 0 2px var(--accent);
+				color: var(--accent);
 			}
+
 			footer {
-				margin-top: 4rem;
-				padding-top: 1.5rem;
-				border-top: 1px solid var(--line);
-				color: var(--muted);
-				font-size: 0.85rem;
+				margin-top: 84px;
+				padding-top: 26px;
+				border-top: 2px solid var(--border-outer);
+				color: var(--text-faint);
+				font-size: 12px;
+				text-align: center;
+				line-height: 1.9;
+			}
+			footer code {
+				color: var(--text-dim);
+				background: none;
+				box-shadow: none;
+				padding: 0;
 			}
 		</style>
 	</head>
 	<body>
+		<header class="hero">
+			<span class="badge"><span class="dot"></span> Eval Deep-Dive</span>
+			<h1>WHY RELEVANCE ≈ 0.73</h1>
+			<p class="sub">
+				Three of Nexus Recall's eval metrics clear 0.80 easily. One doesn't — and that's by design,
+				not a bug. This page shows, with the real numbers from a live <code>pnpm eval</code> run,
+				exactly why.
+			</p>
+			<div class="hero-stats">
+				<div class="hero-stat"><div class="n">RAGAS</div><div class="l">Question re-gen</div></div>
+				<div class="hero-stat"><div class="n">20 Q&amp;A</div><div class="l">Alchemy corpus</div></div>
+				<div class="hero-stat"><div class="n">5-sample</div><div class="l">Generation set</div></div>
+				<div class="hero-stat"><div class="n">~0.73</div><div class="l">Reported · floor 0.65</div></div>
+			</div>
+			<nav class="toc">
+				<a class="home" href="/how-it-works.html">← How It Works</a>
+				<a href="#numbers">The Numbers</a>
+				<a href="#method">Method</a>
+				<a href="#breakdown">Breakdown</a>
+				<a href="#toggle">Best vs Honest</a>
+				<a href="#geometry">Geometry</a>
+				<a href="#ship">What We Ship</a>
+			</nav>
+		</header>
+
 		<div class="wrap">
-			<header>
-				<h1>Why does Answer Relevance sit at ~0.73?</h1>
-				<p class="lede">
-					Three of Nexus Recall's eval metrics clear 0.80 easily. One doesn't — and that's by
-					design, not a bug. This page shows, with the real numbers from a live
-					<code>pnpm eval</code> run, exactly why.
+			<!-- THE NUMBERS -->
+			<section id="numbers">
+				<div class="eyebrow">01 — The Four Numbers</div>
+				<h2>Four metrics, two different shapes</h2>
+				<p class="lead">
+					Every metric is a percentage, so it's tempting to hold them all to the same bar. But they
+					measure <em>different shapes of thing</em>. Two compare an answer to a fixed target. One
+					measures how <em>spread out</em> a set of guesses is. That difference is the whole story.
 				</p>
-			</header>
+				<div class="cards" id="cards"></div>
+			</section>
 
-			<h2>The four numbers</h2>
-			<p>
-				Every metric is a percentage, so it's tempting to hold them all to the same bar. But they
-				measure <em>different shapes of thing</em>. Two compare an answer to a fixed target. One
-				measures how <em>spread out</em> a set of guesses is. That difference is the whole story.
-			</p>
-			<div class="cards" id="cards"></div>
+			<!-- METHOD -->
+			<section id="method">
+				<div class="eyebrow">02 — What It Actually Computes</div>
+				<h2>"Relevance" is a dispersion measure</h2>
+				<p class="lead">
+					We never compare the answer to a "correct" relevance. Instead the recipe (the RAGAS method)
+					is:
+				</p>
+				<ol>
+					<li>Take the model's answer.</li>
+					<li>Ask an LLM: "what 3 questions would this answer respond to?"</li>
+					<li>
+						Measure how close each reconstructed question is to the <em>original</em> question (cosine
+						similarity, 0–1).
+					</li>
+					<li><strong>Average the three.</strong></li>
+				</ol>
+				<p>
+					So the score isn't "how good is the answer" — it's "how tightly do three reconstructed
+					questions cluster around the real one." Here's that happening for all five sampled
+					questions. Watch the pattern: the <span style="color: var(--ok)">first guess</span> is almost
+					always excellent — it's the 2nd and 3rd that pull the average down.
+				</p>
 
-			<h2>What "relevance" actually computes</h2>
-			<p>
-				We never compare the answer to a "correct" relevance. Instead the recipe (the RAGAS method)
-				is:
-			</p>
-			<ol>
-				<li>Take the model's answer.</li>
-				<li>Ask an LLM: "what 3 questions would this answer respond to?"</li>
-				<li>
-					Measure how close each reconstructed question is to the <em>original</em> question (cosine
-					similarity, 0–1).
-				</li>
-				<li><strong>Average the three.</strong></li>
-			</ol>
-			<p>
-				So the score isn't "how good is the answer" — it's "how tightly do three reconstructed
-				questions cluster around the real one." Here's that happening for all five sampled
-				questions. Watch the pattern: the <span style="color: var(--green)">first guess</span> is
-				almost always excellent — it's the 2nd and 3rd that pull the average down.
-			</p>
+				<div id="questions"></div>
 
-			<div id="questions"></div>
-
-			<div class="callout">
-				<strong>The averaging trap.</strong> The method <em>asks</em> for distinct questions, so
-				guesses 2 and 3 deliberately rephrase or grab a side-detail from the answer. One bullseye +
-				two near-misses averages into the low 0.70s — every single time.
-			</div>
-
-			<h2>"Just keep the best guess?"</h2>
-			<p>
-				If we averaged only the single best reconstruction per question, relevance would leap past
-				0.80. But that throws away the robustness of sampling — and rewards an answer for being
-				reconstructable <em>once</em>, even if it rambles. Toggle it:
-			</p>
-			<div class="toggle">
-				<button id="btn-mean" class="active" onclick="setMode('mean')">
-					Average all 3 (honest)
-				</button>
-				<button id="btn-best" onclick="setMode('best')">Keep best only (gamed)</button>
-			</div>
-			<div class="bigbar">
-				<div class="track" style="height: 28px">
-					<div
-						id="overallfill"
-						class="fill"
-						style="
-							width: 73%;
-							background: var(--amber);
-							transition:
-								width 0.5s,
-								background 0.5s;
-						"
-					></div>
+				<div class="callout">
+					<strong>The averaging trap.</strong> The method <em>asks</em> for distinct questions, so
+					guesses 2 and 3 deliberately rephrase or grab a side-detail from the answer. One bullseye +
+					two near-misses averages into the low 0.70s — every single time.
 				</div>
-			</div>
-			<p class="muted">
-				Overall Answer Relevance: <strong id="overallnum" style="color: var(--ink)">73%</strong>
-				<span id="overallnote"></span>
-			</p>
+			</section>
 
-			<h2>Even perfect paraphrases aren't 1.0</h2>
-			<p>
-				The second reason 0.80 is hard: embeddings don't score synonyms as identical. Two questions
-				that mean the same thing but share few words land surprisingly low. Here's the measured
-				cosine for genuine human paraphrases — note <em>"Magnum Opus" vs "Great Work"</em> at just
-				0.66:
-			</p>
-			<div id="scale"></div>
-			<p class="muted">
-				When even hand-written paraphrases live between 0.66 and 0.95, the <em>average</em> of three
-				machine-generated ones naturally settles in the 0.70s. There's no prompt that fixes
-				geometry.
-			</p>
+			<!-- TOGGLE -->
+			<section id="toggle">
+				<div class="eyebrow">03 — Best vs Honest</div>
+				<h2>"Just keep the best guess?"</h2>
+				<p class="lead">
+					If we averaged only the single best reconstruction per question, relevance would leap past
+					0.80. But that throws away the robustness of sampling — and rewards an answer for being
+					reconstructable <em>once</em>, even if it rambles. Toggle it:
+				</p>
+				<div class="toggle">
+					<button id="btn-mean" class="active" onclick="setMode('mean')">
+						Average all 3 (honest)
+					</button>
+					<button id="btn-best" onclick="setMode('best')">Keep best only (gamed)</button>
+				</div>
+				<div class="bigbar">
+					<div class="track" style="height: 28px">
+						<div
+							id="overallfill"
+							class="fill"
+							style="
+								width: 73%;
+								background: var(--amber);
+								transition:
+									width 0.5s,
+									background 0.5s;
+							"
+						></div>
+					</div>
+				</div>
+				<p class="muted">
+					Overall Answer Relevance: <strong id="overallnum" style="color: var(--text)">73%</strong>
+					<span id="overallnote"></span>
+				</p>
+			</section>
 
-			<h2>So what we ship</h2>
-			<p>The honest design treats each metric by its real nature:</p>
-			<ul>
-				<li>
-					<strong style="color: var(--green)">Faithfulness, Answer Similarity, Recall</strong> —
-					compared to a fixed target (a judge verdict, the gold answer, the source chunk). They
-					<em>saturate near 1.0 when correct</em>, so <strong>gate them at 0.80</strong>.
-				</li>
-				<li>
-					<strong style="color: var(--amber)">Answer Relevance</strong> — a dispersion measure with
-					a structurally lower ceiling. <strong>Report it, with a 0.65 regression floor</strong> —
-					high enough to catch a real collapse (an off-topic answer scores ~0.30) without pretending
-					0.80 is reachable.
-				</li>
-			</ul>
-			<div class="callout">
-				A metric you have to game to pass isn't a quality gate — it's decoration. Relevance earns
-				its place by being <em>reported truthfully</em>, not by being forced over a line.
-			</div>
+			<!-- GEOMETRY -->
+			<section id="geometry">
+				<div class="eyebrow">04 — The Geometry Ceiling</div>
+				<h2>Even perfect paraphrases aren't 1.0</h2>
+				<p class="lead">
+					The second reason 0.80 is hard: embeddings don't score synonyms as identical. Two questions
+					that mean the same thing but share few words land surprisingly low. Here's the measured
+					cosine for genuine human paraphrases — note <em>"Magnum Opus" vs "Great Work"</em> at just
+					0.66:
+				</p>
+				<div id="scale"></div>
+				<p class="muted">
+					When even hand-written paraphrases live between 0.66 and 0.95, the <em>average</em> of three
+					machine-generated ones naturally settles in the 0.70s. There's no prompt that fixes
+					geometry.
+				</p>
+			</section>
+
+			<!-- SHIP -->
+			<section id="ship">
+				<div class="eyebrow">05 — The Honest Design</div>
+				<h2>So what we ship</h2>
+				<p class="lead">The honest design treats each metric by its real nature:</p>
+				<ul class="clean">
+					<li>
+						<strong style="color: var(--ok)">Faithfulness, Answer Similarity, Recall</strong> —
+						compared to a fixed target (a judge verdict, the gold answer, the source chunk). They
+						<em>saturate near 1.0 when correct</em>, so <strong>gate them at 0.80</strong>.
+					</li>
+					<li>
+						<strong style="color: var(--amber)">Answer Relevance</strong> — a dispersion measure with
+						a structurally lower ceiling. <strong>Report it, with a 0.65 regression floor</strong> —
+						high enough to catch a real collapse (an off-topic answer scores ~0.30) without pretending
+						0.80 is reachable.
+					</li>
+				</ul>
+				<div class="callout">
+					A metric you have to game to pass isn't a quality gate — it's decoration. Relevance earns
+					its place by being <em>reported truthfully</em>, not by being forced over a line.
+				</div>
+			</section>
 
 			<footer>
 				Generated from a real <code>pnpm eval</code> run on the 20-question alchemy corpus
 				(<code>evals/fixtures/</code>), 5-question generation sample, embeddings via OpenAI
-				<code>text-embedding-3-small</code>. Part of Nexus Recall.
+				<code>text-embedding-3-small</code>.<br />
+				Nexus Recall — browser-first RAG explorer · <a href="/how-it-works.html">How It Works →</a>
 			</footer>
 		</div>
 
 		<script>
 			const COLORS = {
-				gold: '#d4af6a',
-				green: '#7bbf6a',
+				gold: '#e0b040',
+				green: '#6fcf7f',
 				amber: '#e0a44b',
-				red: '#d36a6a',
-				blue: '#6a9cd3',
-				muted: '#b9a48f'
+				red: '#c84050',
+				blue: '#9460e0',
+				muted: '#7a5a48'
 			};
 
 			// ── Real run data ───────────────────────────────────────────────
@@ -452,7 +726,7 @@
 				.querySelector('#questions')
 				.insertAdjacentHTML(
 					'beforeend',
-					`<p class="legend"><span class="dot" style="background:${COLORS.green}"></span>① best reconstruction &nbsp;&nbsp;<span class="dot" style="background:${COLORS.amber}"></span>②③ drift to rephrasings / side-details</p>`
+					`<p class="legend"><span class="dot-l" style="background:${COLORS.green}"></span>① best reconstruction &nbsp;&nbsp;<span class="dot-l" style="background:${COLORS.amber}"></span>②③ drift to rephrasings / side-details</p>`
 				);
 
 			// ── Best-vs-mean toggle ────────────────────────────────────────
