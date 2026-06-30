@@ -250,8 +250,10 @@ Zod-validated, so a `[n]` always points at a real source.)
 Embeddings use OpenAI `text-embedding-3-small` when `OPENAI_API_KEY` is set
 (canonical RAGAS, better paraphrase scale); otherwise they fall back to the local
 MiniLM model the app ships with. The full generation gate therefore needs
-`ANTHROPIC_API_KEY` (judge) + `OPENAI_API_KEY` (embeddings) — both are configured
-as GitHub Actions secrets for the `main`-push run; PRs run the free retrieval gate.
+`ANTHROPIC_API_KEY` (judge) + `OPENAI_API_KEY` (embeddings); these are optional
+GitHub Actions secrets, unset by default — so the `main`-push CI run exercises the
+free retrieval gate and the generation metrics stay a local `pnpm eval` step (add
+the secrets to enable the LLM gate in CI). PRs always run retrieval-only.
 
 ---
 
@@ -269,7 +271,11 @@ carries its own `<meta>` CSP. Set `DEMO_KEYS_ENABLED=false` in production. Speed
 Insights + Analytics are wired in the root layout (no-op off-platform).
 
 **Next steps (documented, not shipped):** session rate limiting + content
-moderation (own-key local-first demo doesn't strictly need them); a server proxy
+moderation. With BYOK (`DEMO_KEYS_ENABLED=false`) there's no LLM-cost exposure to
+rate-limit, and Vercel's automatic DDoS mitigation covers volumetric abuse on
+every plan. When the demo-key fallback is enabled, per-request cost is still
+bounded by `MAX_OUTPUT_TOKENS`; a per-endpoint rate limit (Vercel WAF — a Pro
+feature, so not available on Hobby) would be the lever there. Also a server proxy
 for cloud embeddings.
 
 ---
